@@ -4,26 +4,30 @@
 
 import { Router } from 'express';
 import { 
-  createStudent, 
+  register, 
+  login, 
   getAllStudents, 
   getStudentById, 
   updateStudent, 
   removeStudent 
-} from '../controllers/student.controller.js'; // Import your controller functions
+} from '../controllers/student.controller.js';
 
 export const studentRouter: Router = Router();
 
-// 1. Create a student
-studentRouter.post('/', createStudent);
+// 1. Register a student
+studentRouter.post('/register', register);
 
-// 2. View all students
+// 2. Login a student
+studentRouter.post('/login', login);
+
+// 3. View all students
 studentRouter.get('/', getAllStudents);
 
-// 3. View individual student details
+// 4. View individual student details
 studentRouter.get('/:id', getStudentById);
 
-// 4. Edit a student
+// 5. Edit a student
 studentRouter.put('/:id', updateStudent);
 
-// 5. Delete a student
+// 6. Delete a student
 studentRouter.delete('/:id', removeStudent);

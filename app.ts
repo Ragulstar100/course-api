@@ -1,8 +1,6 @@
 import exp from 'express';
 import { error } from 'node:console';
 import { server,environment } from './config.js';
-import { CourseController, CourseManagerService, SQLiteCourseDAL, createCourseRouter } from './course.js';
-import { createStudentRouter, SQLiteStudentDAL, StudentController, StudentManagerService } from './student.js';
 import { courseRouter } from './src/routes/cource.route.js';
 import { studentRouter } from './src/routes/student.route.js';
 const app: exp.Application = exp();

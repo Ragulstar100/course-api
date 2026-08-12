@@ -1,10 +1,11 @@
 // ==========================================
-// 4. CONTROLLER LAYER (controller/student.controller.ts)
+// 4. CONTROLLER LAYER (controllers/student.controller.ts)
 // ==========================================
 
 import { type Request, type Response } from 'express';
 import { 
-  createNewStudent, 
+  registerStudent, 
+  loginStudent, 
   fetchAllStudents, 
   fetchStudentById, 
   modifyStudent,
@@ -12,12 +13,21 @@ import {
 } from '../service/student.service.js'; 
 import type { UpdateStudentRequest } from '../models/student.model.js';
 
-export async function createStudent(req: Request, res: Response): Promise<void> {
+export async function register(req: Request, res: Response): Promise<void> {
   try {
-    const student = await createNewStudent(req.body);
-    res.status(201).json({ message: 'Student created successfully', student });
+    const student = await registerStudent(req.body);
+    res.status(201).json({ message: 'Student registered successfully', student });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create student', details: (error as Error).message });
+    res.status(400).json({ error: 'Registration failed', details: (error as Error).message });
+  }
+}
+
+export async function login(req: Request, res: Response): Promise<void> {
+  try {
+    const student = await loginStudent(req.body);
+    res.status(200).json({ message: 'Login successful', student });
+  } catch (error) {
+    res.status(401).json({ error: 'Login failed', details: (error as Error).message });
   }
 }
 
