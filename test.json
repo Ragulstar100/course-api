@@ -1,0 +1,9 @@
+{
+  "courseTitle": "Introduction to TypeScript",
+  "description": "Learn the fundamentals of TypeScript including types, interfaces, and classes.",
+  "instructorName": "Jane Doe",
+  "category": "Programming",
+  "duration": "4 weeks",
+  "courseStatus": "Active",
+  "createdDate": "2026-06-06T00:00:00.000Z"
+}
