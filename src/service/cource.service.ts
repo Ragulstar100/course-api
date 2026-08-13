@@ -6,7 +6,8 @@ import {
   selectAllActiveCourses,
   selectCourseById, 
   updateCourseInDb, 
-  deleteCourseFromDb 
+  deleteCourseFromDb,
+  selectAllCoursesGlobal
 } from '../dal/cource.dal.js';
 
 export async function createNewCourse(data: CreateCourseRequest & { shop: string }): Promise<Course> {
@@ -54,4 +55,8 @@ export async function modifyCourse(data: { id: string; shop: string } & Partial<
 
 export async function removeCourse(id: string, shop: string): Promise<boolean> {
   return deleteCourseFromDb(id, shop);
+}
+
+export async function fetchAllCoursesGlobal(): Promise<Course[]> {
+  return selectAllCoursesGlobal();
 }

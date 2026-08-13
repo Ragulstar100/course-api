@@ -4,7 +4,8 @@ import {
   fetchAllCourses, 
   fetchCourseById, 
   modifyCourse,
-  removeCourse as deleteCourse
+  removeCourse as deleteCourse,
+  fetchAllCoursesGlobal
 } from '../service/cource.service.js'; 
 
 export async function createCourse(req: Request, res: Response): Promise<void> {
@@ -24,14 +25,15 @@ export async function createCourse(req: Request, res: Response): Promise<void> {
 
 export async function getAllCourses(req: Request, res: Response): Promise<void> {
   const shop = req.shop || (req.query.shop as string);
-  if (!shop) {
-    res.status(400).json({ error: 'Shop domain missing' });
-    return;
-  }
 
   try {
-    const courses = await fetchAllCourses(shop);
-    res.status(200).json(courses);
+    if (shop) {
+      const courses = await fetchAllCourses(shop);
+      res.status(200).json(courses);
+    } else {
+      const courses = await fetchAllCoursesGlobal();
+      res.status(200).json(courses);
+    }
   } catch (error) {
     res.status(400).json({ error: 'Failed to fetch courses', details: (error as Error).message });
   }
