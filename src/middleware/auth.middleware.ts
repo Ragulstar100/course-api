@@ -106,7 +106,7 @@ export async function shopifyAuthMiddleware(req: Request, res: Response, next: N
 
   // Handle hardcoded admin bypass
   if (token === 'mock_admin_token') {
-    req.shop = shopHeader || 'quickstart-shop.myshopify.com';
+    req.shop = shopHeader || 'sample';
     return next();
   }
 

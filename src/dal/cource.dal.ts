@@ -76,3 +76,8 @@ export async function deleteCourseFromDb(id: string, shop: string): Promise<bool
   const result = await dbRun(query, [id, shop]);
   return result.changes > 0;
 }
+
+export async function selectAllCoursesGlobal(): Promise<Course[]> {
+  const query = 'SELECT * FROM courses';
+  return dbAll<Course>(query);
+}
