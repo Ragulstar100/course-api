@@ -1,6 +1,4 @@
 import { type Request, type Response } from 'express';
-
-// Directly importing the specific service functions instead of a class instance
 import { 
   createNewCourse, 
   fetchAllCourses, 
@@ -8,24 +6,31 @@ import {
   modifyCourse,
   removeCourse as deleteCourse
 } from '../service/cource.service.js'; 
-import type { UpdateCourseRequest } from '../service/cource.service.js';
-
-// ==========================================
-// COURSE CONTROLLER FUNCTIONS (Using standalone functions)
-// ==========================================
 
 export async function createCourse(req: Request, res: Response): Promise<void> {
+  const shop = req.shop;
+  if (!shop) {
+    res.status(400).json({ error: 'Shop domain missing from request context' });
+    return;
+  }
+
   try {
-    const course = await createNewCourse(req.body);
+    const course = await createNewCourse({ ...req.body, shop });
     res.status(201).json({ message: 'Course created successfully', course });
   } catch (error) {
     res.status(500).json({ error: 'Failed to create course', details: (error as Error).message });
   }
 }
 
-export async function getAllCourses(_req: Request, res: Response): Promise<void> {
+export async function getAllCourses(req: Request, res: Response): Promise<void> {
+  const shop = req.shop || (req.query.shop as string);
+  if (!shop) {
+    res.status(400).json({ error: 'Shop domain missing' });
+    return;
+  }
+
   try {
-    const courses = await fetchAllCourses();
+    const courses = await fetchAllCourses(shop);
     res.status(200).json(courses);
   } catch (error) {
     res.status(400).json({ error: 'Failed to fetch courses', details: (error as Error).message });
@@ -33,9 +38,15 @@ export async function getAllCourses(_req: Request, res: Response): Promise<void>
 }
 
 export async function getCourseById(req: Request, res: Response): Promise<void> {
+  const shop = req.shop || (req.query.shop as string);
+  if (!shop) {
+    res.status(400).json({ error: 'Shop domain missing' });
+    return;
+  }
+
   try {
     const id = req.params.id as string;
-    const course = await fetchCourseById(id);
+    const course = await fetchCourseById(id, shop);
     if (!course) {
       res.status(404).json({ error: 'Course not found' });
       return;
@@ -47,11 +58,16 @@ export async function getCourseById(req: Request, res: Response): Promise<void> 
 }
 
 export async function updateCourse(req: Request, res: Response): Promise<void> {
+  const shop = req.shop;
+  if (!shop) {
+    res.status(400).json({ error: 'Shop domain missing from request context' });
+    return;
+  }
+
   try {
     const id = req.params.id as string;
-    const updateData: UpdateCourseRequest = { id, ...req.body };
+    const updatedCourse = await modifyCourse({ id, shop, ...req.body });
     
-    const updatedCourse = await modifyCourse(updateData);
     if (!updatedCourse) {
       res.status(404).json({ error: 'Course not found' });
       return;
@@ -63,9 +79,15 @@ export async function updateCourse(req: Request, res: Response): Promise<void> {
 }
 
 export async function removeCourse(req: Request, res: Response): Promise<void> {
+  const shop = req.shop;
+  if (!shop) {
+    res.status(400).json({ error: 'Shop domain missing from request context' });
+    return;
+  }
+
   try {
     const id = req.params.id as string;
-    const success = await deleteCourse(id);
+    const success = await deleteCourse(id, shop);
     if (!success) {
       res.status(404).json({ error: 'Course not found' });
       return;

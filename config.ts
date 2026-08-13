@@ -1,19 +1,21 @@
-import dotenv from 'dotenv'
+import dotenv from 'dotenv';
 
-//important this line
 dotenv.config();
-type ProjectConfig={
-    // developerName:string|undefined
-    // serviceName:string|undefined
-    // version:string|undefined
-    port:string|undefined
-}
 
-export const environment=process.env.environment
+type ProjectConfig = {
+  port: string;
+};
 
-export let server:ProjectConfig={
-    // developerName:process.env.developerName||'none',
-    // serviceName:process.env.serviceName||'none',
-    // version:process.env.version||'latest',
-    port:process.env.port||"1000",
-}
+export const environment = process.env.environment || 'development';
+
+export const server: ProjectConfig = {
+  port: process.env.port || '1000',
+};
+
+export const shopifyConfig = {
+  apiKey: process.env.SHOPIFY_API_KEY || '',
+  apiSecret: process.env.SHOPIFY_API_SECRET || '',
+  scopes: (process.env.SHOPIFY_SCOPES || 'read_products,read_customers').split(','),
+  host: process.env.HOST || 'http://localhost:1000',
+  jwtSecret: process.env.JWT_SECRET || 'super_secret_course_academy_jwt_key',
+};

@@ -1,9 +1,11 @@
-// ==========================================
-// 3. SERVICE LAYER (service/student.service.ts)
-// ==========================================
-
 import crypto from 'crypto';
-import  type  { Student, RegisterStudentRequest, LoginStudentRequest, UpdateStudentRequest } from '../models/student.model.js';
+import type { 
+  Student, 
+  RegisterStudentRequest, 
+  LoginStudentRequest, 
+  UpdateStudentRequest,
+  StudentAuthResponse
+} from '../models/student.model.js';
 import { 
   insertStudent, 
   selectStudentByEmail, 
@@ -12,35 +14,89 @@ import {
   updateStudentInDb, 
   deleteStudentFromDb 
 } from '../dal/student.dal.js';
+import { 
+  insertEnrollment, 
+  selectEnrollmentsByStudent, 
+  selectAllEnrollments, 
+  selectRecentEnrollments,
+  updateEnrollmentStatusInDb, 
+  deleteEnrollmentFromDb,
+  getMerchantDashboardMetrics
+} from '../dal/enrollment.dal.js';
+import { signJwt } from '../middleware/auth.middleware.js';
+import { shopifyConfig } from '../../config.js';
+import { createShopifyCustomer, updateShopifyCustomer, deleteShopifyCustomer } from './shopify.service.js';
 
-export async function registerStudent(data: RegisterStudentRequest): Promise<Omit<Student, "passwordHash">> {
-  const existing = await selectStudentByEmail(data.email);
+// ==========================================
+// STUDENT SERVICES
+// ==========================================
+
+export async function registerStudent(data: RegisterStudentRequest): Promise<StudentAuthResponse> {
+  const shop = data.shop.trim().toLowerCase();
+  
+  const existing = await selectStudentByEmail(data.email, shop);
   if (existing) {
-    throw new Error('Email is already registered');
+    throw new Error('Email is already registered on this store');
   }
 
   const id = crypto.randomUUID();
   const createdDate = new Date().toISOString();
   const passwordHash = crypto.createHash('sha256').update(data.password).digest('hex');
 
+  
+  const shopifyCustomerId = await createShopifyCustomer(shop, data.studentName, data.email);
+
   const student: Student = {
     id,
     studentName: data.studentName,
     email: data.email,
     passwordHash,
-    enrolledCourseId: data.enrolledCourseId,
     studentStatus: "Active",
     createdDate,
+    shopifyCustomerId,
+    shop,
+    phone: null,
+    course: null,
+    bio: null,
   };
 
   await insertStudent(student);
 
-  const { passwordHash: _, ...studentWithoutPassword } = student;
-  return studentWithoutPassword;
+  // If initial enrollment course is provided, enroll student
+  if (data.enrolledCourseId) {
+    try {
+      await enrollStudentInCourse({
+        studentId: id,
+        courseId: data.enrolledCourseId,
+        shop,
+      });
+    } catch (err) {
+      console.error('Failed to enroll student in initial course:', err);
+    }
+  }
+
+  // Generate JWT token
+  const token = signJwt({ studentId: id, shop }, shopifyConfig.jwtSecret, 2592000); // 30 days
+
+  return {
+    id: student.id,
+    studentName: student.studentName,
+    email: student.email,
+    studentStatus: student.studentStatus,
+    createdDate: student.createdDate,
+    shopifyCustomerId: student.shopifyCustomerId || null,
+    shop: student.shop,
+    token,
+    phone: student.phone || null,
+    course: student.course || null,
+    bio: student.bio || null,
+  };
 }
 
-export async function loginStudent(data: LoginStudentRequest): Promise<Omit<Student, "passwordHash">> {
-  const student = await selectStudentByEmail(data.email);
+export async function loginStudent(data: LoginStudentRequest): Promise<StudentAuthResponse> {
+  const shop = data.shop.trim().toLowerCase();
+  const student = await selectStudentByEmail(data.email, shop);
+  
   if (!student) {
     throw new Error('Invalid email or password');
   }
@@ -50,32 +106,63 @@ export async function loginStudent(data: LoginStudentRequest): Promise<Omit<Stud
     throw new Error('Invalid email or password');
   }
 
-  const { passwordHash: _, ...studentWithoutPassword } = student;
-  return studentWithoutPassword;
+  if (student.studentStatus !== 'Active') {
+    throw new Error('Your student account is inactive. Please contact store support.');
+  }
+
+  const token = signJwt({ studentId: student.id, shop: student.shop }, shopifyConfig.jwtSecret, 2592000);
+
+  return {
+    id: student.id,
+    studentName: student.studentName,
+    email: student.email,
+    studentStatus: student.studentStatus,
+    createdDate: student.createdDate,
+    shopifyCustomerId: student.shopifyCustomerId || null,
+    shop: student.shop,
+    token,
+    phone: student.phone || null,
+    course: student.course || null,
+    bio: student.bio || null,
+  };
 }
 
-export async function fetchAllStudents(): Promise<Omit<Student, "passwordHash">[]> {
-  const students = await selectAllStudents();
+export async function fetchAllStudents(shop: string): Promise<Omit<Student, "passwordHash">[]> {
+  const students = await selectAllStudents(shop);
   return students.map(({ passwordHash: _, ...rest }) => rest);
 }
 
-export async function fetchStudentById(id: string): Promise<Omit<Student, "passwordHash"> | null> {
-  const student = await selectStudentById(id);
+export async function fetchStudentById(id: string, shop: string): Promise<Omit<Student, "passwordHash"> | null> {
+  const student = await selectStudentById(id, shop);
   if (!student) return null;
   const { passwordHash: _, ...rest } = student;
   return rest;
 }
 
 export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<Student, "passwordHash"> | null> {
-  const existing = await selectStudentById(data.id);
+  const existing = await selectStudentById(data.id, data.shop);
   if (!existing) return null;
 
   const updatedFields = {
     studentName: data.studentName ?? existing.studentName,
     email: data.email ?? existing.email,
-    enrolledCourseId: data.enrolledCourseId ?? existing.enrolledCourseId,
     studentStatus: data.studentStatus ?? existing.studentStatus,
+    shopifyCustomerId: data.shopifyCustomerId !== undefined ? data.shopifyCustomerId : (existing.shopifyCustomerId || null),
+    shop: data.shop,
+    phone: data.phone !== undefined ? data.phone : (existing.phone || null),
+    course: data.course !== undefined ? data.course : (existing.course || null),
+    bio: data.bio !== undefined ? data.bio : (existing.bio || null),
   };
+
+  // Sync customer update with Shopify if linked
+  if (updatedFields.shopifyCustomerId) {
+    await updateShopifyCustomer(
+      data.shop,
+      updatedFields.shopifyCustomerId,
+      updatedFields.studentName,
+      updatedFields.email
+    );
+  }
 
   const updated = await updateStudentInDb(data.id, updatedFields);
   if (!updated) return null;
@@ -84,6 +171,54 @@ export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<St
   return rest;
 }
 
-export async function removeStudent(id: string): Promise<boolean> {
-  return deleteStudentFromDb(id);
+export async function removeStudent(id: string, shop: string): Promise<boolean> {
+  const existing = await selectStudentById(id, shop);
+  if (existing && existing.shopifyCustomerId) {
+    await deleteShopifyCustomer(shop, existing.shopifyCustomerId);
+  }
+  return deleteStudentFromDb(id, shop);
+}
+
+// ==========================================
+// ENROLLMENT SERVICES
+// ==========================================
+
+export async function enrollStudentInCourse(data: {
+  studentId: string;
+  courseId: string;
+  shop: string;
+}): Promise<any> {
+  const enrollment = {
+    id: crypto.randomUUID(),
+    studentId: data.studentId,
+    courseId: data.courseId,
+    enrollmentDate: new Date().toISOString(),
+    enrollmentStatus: 'In Progress' as const,
+    shop: data.shop,
+  };
+  return insertEnrollment(enrollment);
+}
+
+export async function fetchStudentEnrollments(studentId: string, shop: string) {
+  return selectEnrollmentsByStudent(studentId, shop);
+}
+
+export async function fetchAllShopEnrollments(shop: string) {
+  return selectAllEnrollments(shop);
+}
+
+export async function fetchRecentShopEnrollments(shop: string, limit: number) {
+  return selectRecentEnrollments(shop, limit);
+}
+
+export async function updateEnrollmentStatus(id: string, status: 'In Progress' | 'Completed', shop: string) {
+  return updateEnrollmentStatusInDb(id, status, shop);
+}
+
+export async function deleteEnrollment(id: string, shop: string) {
+  return deleteEnrollmentFromDb(id, shop);
+}
+
+export async function fetchDashboardMetrics(shop: string) {
+  return getMerchantDashboardMetrics(shop);
 }

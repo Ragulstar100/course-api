@@ -1,7 +1,3 @@
-// ==========================================
-// 5. ROUTE OBJECT (routes/student.routes.ts)
-// ==========================================
-
 import { Router } from 'express';
 import { 
   register, 
@@ -9,25 +5,60 @@ import {
   getAllStudents, 
   getStudentById, 
   updateStudent, 
-  removeStudent 
+  removeStudent,
+  enroll,
+  getEnrollments,
+  updateEnrollment,
+  unenroll,
+  getDashboardStats
 } from '../controllers/student.controller.js';
+import { shopifyAuthMiddleware, studentAuthMiddleware } from '../middleware/auth.middleware.js';
 
 export const studentRouter: Router = Router();
 
-// 1. Register a student
+// ==========================================
+// 1. PUBLIC AUTH ROUTING
+// ==========================================
 studentRouter.post('/register', register);
-
-// 2. Login a student
 studentRouter.post('/login', login);
 
-// 3. View all students
-studentRouter.get('/', getAllStudents);
+// ==========================================
+// 2. STUDENT PORTAL (Student Auth Protected)
+// ==========================================
+// Student profile fetching/editing
+studentRouter.get(
+  '/student-profile', 
+  studentAuthMiddleware, 
+  (req, res, next) => { req.params.id = req.studentId!; next(); }, 
+  getStudentById
+);
+studentRouter.put(
+  '/student-profile', 
+  studentAuthMiddleware, 
+  (req, res, next) => { req.params.id = req.studentId!; next(); }, 
+  updateStudent
+);
 
-// 4. View individual student details
-studentRouter.get('/:id', getStudentById);
+// Student enrollments fetch/create
+studentRouter.get('/student-enrollments', studentAuthMiddleware, getEnrollments);
+studentRouter.post('/student-enroll', studentAuthMiddleware, enroll);
 
-// 5. Edit a student
-studentRouter.put('/:id', updateStudent);
+// ==========================================
+// 3. MERCHANT PORTAL (Shopify Admin Protected)
+// ==========================================
+// Student CRUD
+studentRouter.get('/', shopifyAuthMiddleware, getAllStudents);
+studentRouter.get('/admin/:id', shopifyAuthMiddleware, getStudentById);
+studentRouter.put('/admin/:id', shopifyAuthMiddleware, updateStudent);
+studentRouter.delete('/admin/:id', shopifyAuthMiddleware, removeStudent);
 
-// 6. Delete a student
-studentRouter.delete('/:id', removeStudent);
+// Enrollment list & admin enrollment creation
+studentRouter.get('/admin-enrollments', shopifyAuthMiddleware, getEnrollments);
+studentRouter.post('/admin-enroll', shopifyAuthMiddleware, enroll);
+
+// Enrollment updates & deletions
+studentRouter.put('/enrollments/:id', shopifyAuthMiddleware, updateEnrollment);
+studentRouter.delete('/enrollments/:id', shopifyAuthMiddleware, unenroll);
+
+// Dashboard metrics endpoint
+studentRouter.get('/admin-dashboard/stats', shopifyAuthMiddleware, getDashboardStats);

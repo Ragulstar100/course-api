@@ -7,9 +7,13 @@ export type Course = {
   duration: string;
   courseStatus: "Active" | "Inactive";
   createdDate: string;
+  shopifyProductId?: string | null;
+  shop: string;
 };
 
-export type CreateCourseRequest = Omit<Course, "id" | "createdDate">;
+export type CreateCourseRequest = Omit<Course, "id" | "createdDate" | "shop"> & {
+  shop?: string;
+};
 
 export type UpdateCourse = {
   courseTitle?: string;
@@ -18,4 +22,5 @@ export type UpdateCourse = {
   category?: string;
   duration?: string;
   courseStatus?: "Active" | "Inactive";
+  shopifyProductId?: string | null;
 };
