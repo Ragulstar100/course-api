@@ -2,7 +2,6 @@ import exp from 'express';
 import { server, environment } from './config.js';
 import { courseRouter } from './src/routes/cource.route.js';
 import { studentRouter } from './src/routes/student.route.js';
-import { shopifyRouter } from './src/routes/shopify.route.js';
 import { initializeDatabase } from './src/dal/db.js';
 
 const app: exp.Application = exp();
@@ -23,7 +22,6 @@ app.use((req, res, next) => {
 app.use(exp.json());
 
 // Mount routers
-app.use('/shopify', shopifyRouter);
 app.use('/courses', courseRouter);
 app.use('/student', studentRouter);
 

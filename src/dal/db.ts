@@ -42,20 +42,6 @@ export function dbAll<T>(sql: string, params: any[] = []): Promise<T[]> {
 export async function initializeDatabase() {
   console.log('Initializing database schema...');
 
-  // 1. Create shopify_sessions table
-  await dbRun(`
-    CREATE TABLE IF NOT EXISTS shopify_sessions (
-      id TEXT PRIMARY KEY,
-      shop TEXT NOT NULL,
-      state TEXT NOT NULL,
-      isOnline INTEGER NOT NULL,
-      scope TEXT,
-      accessToken TEXT,
-      expires INTEGER,
-      onlineAccessInfo TEXT
-    )
-  `);
-
   // 2. Create stores table
   await dbRun(`
     CREATE TABLE IF NOT EXISTS stores (

@@ -10,6 +10,7 @@ export type Student = {
   phone?: string | null;
   course?: string | null;
   bio?: string | null;
+  isAdmin?: boolean;
 };
 
 export type RegisterStudentRequest = {
@@ -18,7 +19,6 @@ export type RegisterStudentRequest = {
   password: string;
   shop: string;
   shopifyCustomerId?: string | null;
-  enrolledCourseId?: string; // Optional field for initial course enrollment on register
 };
 
 export type LoginStudentRequest = {
@@ -51,4 +51,5 @@ export interface StudentAuthResponse {
   phone?: string | null;
   course?: string | null;
   bio?: string | null;
+  isAdmin?: boolean;
 }

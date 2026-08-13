@@ -25,8 +25,6 @@ import {
 } from '../dal/enrollment.dal.js';
 import { signJwt } from '../middleware/auth.middleware.js';
 import { shopifyConfig } from '../../config.js';
-import { createShopifyCustomer, updateShopifyCustomer, deleteShopifyCustomer } from './shopify.service.js';
-
 // ==========================================
 // STUDENT SERVICES
 // ==========================================
@@ -44,7 +42,6 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
   const passwordHash = crypto.createHash('sha256').update(data.password).digest('hex');
 
   
-  const shopifyCustomerId = await createShopifyCustomer(shop, data.studentName, data.email);
 
   const student: Student = {
     id,
@@ -53,7 +50,6 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
     passwordHash,
     studentStatus: "Active",
     createdDate,
-    shopifyCustomerId,
     shop,
     phone: null,
     course: null,
@@ -62,18 +58,6 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
 
   await insertStudent(student);
 
-  // If initial enrollment course is provided, enroll student
-  if (data.enrolledCourseId) {
-    try {
-      await enrollStudentInCourse({
-        studentId: id,
-        courseId: data.enrolledCourseId,
-        shop,
-      });
-    } catch (err) {
-      console.error('Failed to enroll student in initial course:', err);
-    }
-  }
 
   // Generate JWT token
   const token = signJwt({ studentId: id, shop }, shopifyConfig.jwtSecret, 2592000); // 30 days
@@ -93,8 +77,28 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
   };
 }
 
+
+
 export async function loginStudent(data: LoginStudentRequest): Promise<StudentAuthResponse> {
   const shop = data.shop.trim().toLowerCase();
+
+  // Hardcoded Admin login check
+  if (data.email === 'test' && data.password === 'test') {
+    return {
+      id: 'admin_id',
+      studentName: 'Admin Test',
+      email: 'test',
+      studentStatus: 'Active',
+      createdDate: new Date().toISOString(),
+      shop: shop,
+      token: 'mock_admin_token',
+      phone: null,
+      course: null,
+      bio: null,
+      isAdmin: true,
+    };
+  }
+
   const student = await selectStudentByEmail(data.email, shop);
   
   if (!student) {
@@ -154,15 +158,7 @@ export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<St
     bio: data.bio !== undefined ? data.bio : (existing.bio || null),
   };
 
-  // Sync customer update with Shopify if linked
-  if (updatedFields.shopifyCustomerId) {
-    await updateShopifyCustomer(
-      data.shop,
-      updatedFields.shopifyCustomerId,
-      updatedFields.studentName,
-      updatedFields.email
-    );
-  }
+
 
   const updated = await updateStudentInDb(data.id, updatedFields);
   if (!updated) return null;
@@ -172,10 +168,7 @@ export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<St
 }
 
 export async function removeStudent(id: string, shop: string): Promise<boolean> {
-  const existing = await selectStudentById(id, shop);
-  if (existing && existing.shopifyCustomerId) {
-    await deleteShopifyCustomer(shop, existing.shopifyCustomerId);
-  }
+ 
   return deleteStudentFromDb(id, shop);
 }
 
