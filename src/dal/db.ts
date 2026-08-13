@@ -48,21 +48,29 @@ export async function initializeDatabase() {
       shop TEXT PRIMARY KEY,
       name TEXT,
       email TEXT,
-      createdAt TEXT NOT NULL
+      createdAt TEXT NOT NULL,
+      username TEXT UNIQUE,
+      passwordHash TEXT
     )
   `);
 
   // Re-create courses and students tables with multi-tenant fields if they don't have them
   // To avoid complex migrations, we drop old tables if they are incompatible.
-  // We'll inspect students schema to see if it still has enrolledCourseId
+  // We'll inspect students and courses schemas to see if they need updates.
   try {
     const hasOldStudentTable = await dbGet<{ sql: string }>(
       "SELECT sql FROM sqlite_master WHERE type='table' AND name='students'"
     );
+    const hasOldCourseTable = await dbGet<{ sql: string }>(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='courses'"
+    );
 
-    if (hasOldStudentTable && hasOldStudentTable.sql.includes('enrolledCourseId TEXT NOT NULL')) {
-      console.log('Detected outdated students table schema. Recreating table...');
-      await dbRun('DROP TABLE IF EXISTS enrollments'); // enrollments depends on students
+    const isOldStudent = hasOldStudentTable && hasOldStudentTable.sql.includes('enrolledCourseId TEXT NOT NULL');
+    const isOldCourse = hasOldCourseTable && !hasOldCourseTable.sql.includes('FOREIGN KEY (shop) REFERENCES stores(shop)');
+
+    if (isOldStudent || isOldCourse) {
+      console.log('Detected outdated schema. Recreating tables...');
+      await dbRun('DROP TABLE IF EXISTS enrollments'); // enrollments depends on students & courses
       await dbRun('DROP TABLE IF EXISTS students');
       await dbRun('DROP TABLE IF EXISTS courses');
     }
@@ -82,7 +90,8 @@ export async function initializeDatabase() {
       courseStatus TEXT CHECK(courseStatus IN ('Active', 'Inactive')) NOT NULL,
       createdDate TEXT NOT NULL,
       shopifyProductId TEXT,
-      shop TEXT NOT NULL
+      shop TEXT NOT NULL,
+      FOREIGN KEY (shop) REFERENCES stores(shop) ON DELETE CASCADE
     )
   `);
 
@@ -105,6 +114,17 @@ export async function initializeDatabase() {
   `);
 
   // Run dynamic schema migrations if columns are missing in existing tables
+  try {
+    await dbRun('ALTER TABLE stores ADD COLUMN username TEXT');
+  } catch (e) {
+    // Column already exists or error
+  }
+  try {
+    await dbRun('ALTER TABLE stores ADD COLUMN passwordHash TEXT');
+  } catch (e) {
+    // Column already exists or error
+  }
+
   try {
     await dbRun('ALTER TABLE students ADD COLUMN phone TEXT');
   } catch (e) {
