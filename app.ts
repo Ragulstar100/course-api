@@ -5,6 +5,7 @@ import { courseRouter } from './src/routes/cource.route.js';
 import { studentRouter } from './src/routes/student.route.js';
 import { merchantRouter } from './src/routes/merchant.route.js';
 import { initializeDatabase } from './src/dal/db.js';
+import { authCallback } from './src/controllers/merchant.controller.js';
 
 const app: exp.Application = exp();
 
@@ -27,6 +28,10 @@ app.use(exp.json());
 app.use('/courses', courseRouter);
 app.use('/student', studentRouter);
 app.use('/shopify', merchantRouter);
+
+// Root callback endpoints for Shopify Redirects
+app.get('/callback', authCallback);
+app.get('/auth/callback', authCallback);
 
 // Initialize DB and listen
 initializeDatabase().then(() => {

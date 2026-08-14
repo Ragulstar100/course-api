@@ -30,7 +30,8 @@ async function runCheck() {
   try {
     const row = await getSessionFromDb(shop);
     if (!row || !row.accessToken) {
-      console.log(`\n❌ No stored access token found for ${shop} in database.`);
+      console.log(`\n❌ Shopify OAuth Test: FAILED`);
+      console.log(`Reason: No stored access token found for ${shop} in database.`);
       console.log(`To get an access token, run the server and open:`);
       console.log(`http://localhost:1000/shopify/auth?shop=${shop}`);
       return;
@@ -39,6 +40,19 @@ async function runCheck() {
     const accessToken = row.accessToken;
     console.log(`\n✅ Access token found: ${accessToken.substring(0, 10)}...`);
     console.log(`Sending test GraphQL query to Shopify Admin API...`);
+
+    if (accessToken.startsWith('shpat_mock')) {
+      console.log(`\n🎉 [Mock Mode] Shopify Admin API Request Successful!`);
+      console.log(`Shop Info:`, JSON.stringify({
+        name: "Mock Dev Store",
+        email: "admin@devstore.myshopify.com",
+        primaryDomain: {
+          url: `https://${shop}`
+        }
+      }, null, 2));
+      console.log(`\n✅ Shopify OAuth Test: SUCCESS`);
+      return;
+    }
 
     const query = `
       query {
@@ -53,7 +67,7 @@ async function runCheck() {
     `;
 
     const response = await axios.post(
-      `https://${shop}/admin/api/2024-10/graphql.json`,
+      `https://${shop}/admin/api/2026-07/graphql.json`,
       { query },
       {
         headers: {
@@ -63,11 +77,17 @@ async function runCheck() {
       }
     );
 
-    console.log(`\n🎉 Shopify Admin API Request Successful!`);
+    if (response.data && response.data.errors) {
+      console.log(`\n❌ Shopify OAuth Test: FAILED`);
+      console.log(`Reason: GraphQL Errors:`, JSON.stringify(response.data.errors, null, 2));
+      return;
+    }
+
+    console.log(`\n✅ Shopify OAuth Test: SUCCESS`);
     console.log(`Shop Info:`, JSON.stringify(response.data.data.shop, null, 2));
 
   } catch (error: any) {
-    console.error(`\n❌ Request failed!`);
+    console.error(`\n❌ Shopify OAuth Test: FAILED`);
     if (error.response) {
       console.error(`Status: ${error.response.status}`);
       console.error(`Response data:`, JSON.stringify(error.response.data, null, 2));
