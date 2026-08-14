@@ -124,12 +124,12 @@ export async function authCallback(req: Request, res: Response): Promise<void> {
 
     await insertSession(dbSession);
     console.log(`Shopify session stored for shop: ${shop}`);
-    res.status(200).json({
-      message: "Shopify access token received and stored",
-      shop,
-      scope,
-      access_token
-    });
+
+    // Generate JWT token for automatic login on the frontend
+    const token = signJwt({ shop }, shopifyConfig.jwtSecret, 2592000);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+    res.redirect(`${frontendUrl}?token=${token}&shop=${shop}`);
   } catch (error: any) {
     console.error(error.response?.data || error.message);
     res.status(500).json({
