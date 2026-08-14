@@ -79,6 +79,11 @@ export async function authCallback(req: Request, res: Response): Promise<void> {
     return;
   }
 
+  console.log(`\n==========================================`);
+  console.log(`Received Shopify Authorization Code: ${code}`);
+  console.log(`Shop: ${shop}`);
+  console.log(`==========================================\n`);
+
   if (!shop.includes('.')) {
     shop = `${shop}.myshopify.com`;
   }
@@ -101,6 +106,8 @@ export async function authCallback(req: Request, res: Response): Promise<void> {
 
     const { access_token, scope } = response.data;
 
+    console.log('access tocken:'+access_token)
+
     // Save session in our database
     const dbSession: ShopifySession = {
       id: `offline_${shop}`,
@@ -114,7 +121,7 @@ export async function authCallback(req: Request, res: Response): Promise<void> {
     };
 
     await insertSession(dbSession);
-
+    console.log(`Shopify session stored for shop: ${shop}`);
     res.status(200).json({
       message: "Shopify access token received and stored",
       shop,
