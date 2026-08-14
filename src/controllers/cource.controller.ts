@@ -7,6 +7,7 @@ import {
   removeCourse as deleteCourse,
   fetchAllCoursesGlobal
 } from '../service/cource.service.js'; 
+import { fetchProductDetails } from '../service/shopify.service.js';
 
 export async function createCourse(req: Request, res: Response): Promise<void> {
   const shop = req.shop;
@@ -53,7 +54,21 @@ export async function getCourseById(req: Request, res: Response): Promise<void> 
       res.status(404).json({ error: 'Course not found' });
       return;
     }
-    res.status(200).json(course);
+
+    // Enrich course with Shopify product details if associated
+    let shopifyProductDetails = null;
+    if (course.shopifyProductId) {
+      try {
+        shopifyProductDetails = await fetchProductDetails(shop, course.shopifyProductId);
+      } catch (e) {
+        console.warn(`Could not fetch Shopify product details for course ${id}: ${(e as Error).message}`);
+      }
+    }
+
+    res.status(200).json({
+      ...course,
+      shopifyProductDetails
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch course details', details: (error as Error).message });
   }

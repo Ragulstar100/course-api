@@ -14,6 +14,7 @@ import {
   deleteEnrollment,
   fetchDashboardMetrics
 } from '../service/student.service.js'; 
+import { findCustomerByEmail } from '../service/shopify.service.js';
 
 
 
@@ -76,7 +77,19 @@ export async function getStudentById(req: Request, res: Response): Promise<void>
       res.status(404).json({ error: 'Student not found' });
       return;
     }
-    res.status(200).json(student);
+
+    // Enrich student response with Shopify customer details if available
+    let shopifyCustomerDetails = null;
+    try {
+      shopifyCustomerDetails = await findCustomerByEmail(shop, student.email);
+    } catch (e) {
+      console.warn(`Could not fetch Shopify customer details for student ${id}: ${(e as Error).message}`);
+    }
+
+    res.status(200).json({
+      ...student,
+      shopifyCustomerDetails
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch student details', details: (error as Error).message });
   }

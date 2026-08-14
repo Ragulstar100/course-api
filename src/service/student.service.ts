@@ -25,6 +25,7 @@ import {
 } from '../dal/enrollment.dal.js';
 import { signJwt } from '../middleware/auth.middleware.js';
 import { shopifyConfig } from '../../config.js';
+import { findCustomerByEmail } from './shopify.service.js';
 // ==========================================
 // STUDENT SERVICES
 // ==========================================
@@ -41,7 +42,18 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
   const createdDate = new Date().toISOString();
   const passwordHash = crypto.createHash('sha256').update(data.password).digest('hex');
 
-  
+  // Attempt to link Shopify customer ID automatically by email
+  let shopifyCustomerId = data.shopifyCustomerId || null;
+  if (!shopifyCustomerId) {
+    try {
+      const shopifyCustomer = await findCustomerByEmail(shop, data.email);
+      if (shopifyCustomer) {
+        shopifyCustomerId = shopifyCustomer.id;
+      }
+    } catch (e) {
+      console.warn(`Could not associate student with Shopify customer: ${(e as Error).message}`);
+    }
+  }
 
   const student: Student = {
     id,
@@ -50,6 +62,7 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
     passwordHash,
     studentStatus: "Active",
     createdDate,
+    shopifyCustomerId,
     shop,
     phone: null,
     course: null,
@@ -57,7 +70,6 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
   };
 
   await insertStudent(student);
-
 
   // Generate JWT token
   const token = signJwt({ studentId: id, shop }, shopifyConfig.jwtSecret, 2592000); // 30 days
@@ -147,18 +159,28 @@ export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<St
   const existing = await selectStudentById(data.id, data.shop);
   if (!existing) return null;
 
+  let shopifyCustomerId = data.shopifyCustomerId !== undefined ? data.shopifyCustomerId : (existing.shopifyCustomerId || null);
+  
+  // If email has changed, recheck for a matching Shopify customer
+  if (data.email && data.email !== existing.email && !data.shopifyCustomerId) {
+    try {
+      const shopifyCustomer = await findCustomerByEmail(data.shop, data.email);
+      shopifyCustomerId = shopifyCustomer ? shopifyCustomer.id : null;
+    } catch (e) {
+      console.warn(`Could not re-associate student with Shopify customer on email update: ${(e as Error).message}`);
+    }
+  }
+
   const updatedFields = {
     studentName: data.studentName ?? existing.studentName,
     email: data.email ?? existing.email,
     studentStatus: data.studentStatus ?? existing.studentStatus,
-    shopifyCustomerId: data.shopifyCustomerId !== undefined ? data.shopifyCustomerId : (existing.shopifyCustomerId || null),
+    shopifyCustomerId,
     shop: data.shop,
     phone: data.phone !== undefined ? data.phone : (existing.phone || null),
     course: data.course !== undefined ? data.course : (existing.course || null),
     bio: data.bio !== undefined ? data.bio : (existing.bio || null),
   };
-
-
 
   const updated = await updateStudentInDb(data.id, updatedFields);
   if (!updated) return null;

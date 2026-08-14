@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const shop = 'devstore.myshopify.com';
+const shop = 'devstore-k71vvnrv.myshopify.com';
 
 function getSessionFromDb(shopDomain: string): Promise<any> {
   return new Promise((resolve, reject) => {

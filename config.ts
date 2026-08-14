@@ -18,4 +18,5 @@ export const shopifyConfig = {
   scopes: (process.env.SHOPIFY_SCOPES || 'read_products,read_customers').split(','),
   host: process.env.HOST || 'http://localhost:1000',
   jwtSecret: process.env.JWT_SECRET || 'super_secret_course_academy_jwt_key',
+  accessToken: process.env.SHOPIFY_ACCESS_TOKEN || '',
 };
