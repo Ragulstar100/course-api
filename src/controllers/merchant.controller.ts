@@ -2,9 +2,10 @@ import { type Request, type Response } from 'express';
 import crypto from 'crypto';
 import axios from 'axios';
 import { registerMerchant, loginMerchant } from '../service/merchant.service.js';
-import { insertSession } from '../dal/merchant.dal.js';
-import type { ShopifySession } from '../models/merchant.model.js';
+import { insertSession, selectStoreByShop, insertStore, selectSessionsByShop } from '../dal/merchant.dal.js';
+import type { ShopifySession, MerchantStore } from '../models/merchant.model.js';
 import { shopifyConfig } from '../../config.js';
+import { signJwt } from '../middleware/auth.middleware.js';
 
 export async function register(req: Request, res: Response): Promise<void> {
   const { shop, username, password, name, email } = req.body;
@@ -134,5 +135,79 @@ export async function authCallback(req: Request, res: Response): Promise<void> {
       error: "Could not exchange authorization code",
       details: error.response?.data || error.message
     });
+  }
+}
+
+export async function autoLogin(req: Request, res: Response): Promise<void> {
+  const shop = req.query.shop as string;
+  if (!shop) {
+    res.status(400).json({ error: 'Missing shop parameter' });
+    return;
+  }
+
+  try {
+    const sessions = await selectSessionsByShop(shop);
+    if (sessions.length === 0) {
+      res.status(401).json({ error: 'App not installed on this shop' });
+      return;
+    }
+
+    let store = await selectStoreByShop(shop);
+    if (!store) {
+      const newStore: MerchantStore = {
+        shop,
+        name: shop.split('.')[0] || 'Store',
+        email: null,
+        createdAt: new Date().toISOString(),
+        username: shop,
+        passwordHash: null
+      };
+      await insertStore(newStore);
+      store = newStore;
+    }
+
+    if (!store) {
+      res.status(500).json({ error: 'Failed to create store record' });
+      return;
+    }
+
+    const token = signJwt({ shop }, shopifyConfig.jwtSecret, 2592000);
+    res.status(200).json({
+      token,
+      shop,
+      merchant: {
+        shop: store.shop,
+        name: store.name || store.shop,
+        email: store.email || null,
+        shopOwner: store.name || store.shop
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Auto-login failed', details: (error as Error).message });
+  }
+}
+
+export async function getProfile(req: Request, res: Response): Promise<void> {
+  const shop = req.shop;
+  if (!shop) {
+    res.status(401).json({ error: 'Unauthenticated' });
+    return;
+  }
+
+  try {
+    const store = await selectStoreByShop(shop);
+    if (!store) {
+      res.status(404).json({ error: 'Store not found' });
+      return;
+    }
+
+    res.status(200).json({
+      shop: store.shop,
+      name: store.name || store.shop,
+      email: store.email || null,
+      shopOwner: store.name || store.shop
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch profile', details: (error as Error).message });
   }
 }
