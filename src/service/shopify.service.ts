@@ -237,7 +237,10 @@ export async function createCustomerInShopify(shop: string, email: string, name:
       email,
       firstName,
       lastName,
-      acceptsMarketing: true
+      emailMarketingConsent: {
+        marketingState: 'SUBSCRIBED',
+        marketingOptInLevel: 'SINGLE_OPT_IN'
+      }
     }
   };
 
