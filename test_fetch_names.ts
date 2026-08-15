@@ -21,7 +21,7 @@ async function run() {
     const res = await makeGraphQLRequest(shop, query, { id: customerId });
     console.log('Result:', JSON.stringify(res, null, 2));
   } catch (err) {
-    console.error('Error:', err.message);
+    console.error('Error:', (err as any).message);
   }
 }
 
