@@ -142,6 +142,42 @@ export async function makeGraphQLRequest(shop: string, query: string, variables:
 function handleMockRequest(query: string, variables: any): any {
   const normalizedQuery = query.replace(/\s+/g, ' ').trim();
 
+  // Mock customerCreate mutation
+  if (normalizedQuery.includes('mutation CreateCustomer') || normalizedQuery.includes('customerCreate')) {
+    const input = variables.input || {};
+    const mockId = `gid://shopify/Customer/mock-${Math.floor(Math.random() * 100000000)}`;
+    return {
+      data: {
+        customerCreate: {
+          customer: {
+            id: mockId,
+            email: input.email,
+            firstName: input.firstName,
+            lastName: input.lastName
+          },
+          userErrors: []
+        }
+      }
+    };
+  }
+
+  // Mock productCreate mutation
+  if (normalizedQuery.includes('mutation CreateProduct') || normalizedQuery.includes('productCreate')) {
+    const input = variables.input || {};
+    const mockId = `gid://shopify/Product/mock-${Math.floor(Math.random() * 100000000)}`;
+    return {
+      data: {
+        productCreate: {
+          product: {
+            id: mockId,
+            title: input.title
+          },
+          userErrors: []
+        }
+      }
+    };
+  }
+
   // 1. Shop info query
   if (normalizedQuery.includes('shop {')) {
     return { data: { shop: MOCK_SHOP_INFO } };
@@ -374,4 +410,77 @@ export async function fetchProductDetails(shop: string, productId: string): Prom
     price,
     imageUrl
   };
+}
+
+export async function createCustomerInShopify(shop: string, email: string, name: string): Promise<any> {
+  const query = `
+    mutation CreateCustomer($input: CustomerInput!) {
+      customerCreate(input: $input) {
+        customer {
+          id
+          email
+          firstName
+          lastName
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `;
+
+  const parts = name.trim().split(/\s+/);
+  const firstName = parts[0] || '';
+  const lastName = parts.slice(1).join(' ') || 'Student';
+
+  const variables = {
+    input: {
+      email,
+      firstName,
+      lastName,
+      acceptsMarketing: true
+    }
+  };
+
+  const response = await makeGraphQLRequest(shop, query, variables);
+  
+  if (response?.data?.customerCreate?.userErrors?.length > 0) {
+    throw new Error(`Shopify customerCreate errors: ${JSON.stringify(response.data.customerCreate.userErrors)}`);
+  }
+
+  return response?.data?.customerCreate?.customer || null;
+}
+
+export async function createProductInShopify(shop: string, title: string, description: string): Promise<any> {
+  const query = `
+    mutation CreateProduct($input: ProductInput!) {
+      productCreate(input: $input) {
+        product {
+          id
+          title
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `;
+
+  const variables = {
+    input: {
+      title,
+      descriptionHtml: description,
+      status: "ACTIVE"
+    }
+  };
+
+  const response = await makeGraphQLRequest(shop, query, variables);
+
+  if (response?.data?.productCreate?.userErrors?.length > 0) {
+    throw new Error(`Shopify productCreate errors: ${JSON.stringify(response.data.productCreate.userErrors)}`);
+  }
+
+  return response?.data?.productCreate?.product || null;
 }

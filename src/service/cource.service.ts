@@ -9,6 +9,7 @@ import {
   deleteCourseFromDb,
   selectAllCoursesGlobal
 } from '../dal/cource.dal.js';
+import { createProductInShopify } from './shopify.service.js';
 
 export async function createNewCourse(data: CreateCourseRequest & { shop: string }): Promise<Course> {
   const id = crypto.randomUUID();
@@ -16,6 +17,18 @@ export async function createNewCourse(data: CreateCourseRequest & { shop: string
 
   if (!data.courseTitle || !data.description || !data.instructorName || !data.category || !data.duration) {
     throw new Error('Missing required course fields');
+  }
+
+  let shopifyProductId = data.shopifyProductId || null;
+  if (!shopifyProductId) {
+    try {
+      const shopifyProduct = await createProductInShopify(data.shop, data.courseTitle, data.description);
+      if (shopifyProduct) {
+        shopifyProductId = shopifyProduct.id;
+      }
+    } catch (e) {
+      console.warn(`Could not create Shopify product for new course: ${(e as Error).message}`);
+    }
   }
 
   const course: Course = {
@@ -27,7 +40,7 @@ export async function createNewCourse(data: CreateCourseRequest & { shop: string
     duration: data.duration,
     courseStatus: data.courseStatus || 'Active',
     createdDate,
-    shopifyProductId: data.shopifyProductId || null,
+    shopifyProductId,
     shop: data.shop,
   };
 

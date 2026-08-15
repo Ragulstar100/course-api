@@ -25,7 +25,7 @@ import {
 } from '../dal/enrollment.dal.js';
 import { signJwt } from '../middleware/auth.middleware.js';
 import { shopifyConfig } from '../../config.js';
-import { findCustomerByEmail } from './shopify.service.js';
+import { findCustomerByEmail, createCustomerInShopify } from './shopify.service.js';
 // ==========================================
 // STUDENT SERVICES
 // ==========================================
@@ -42,16 +42,19 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
   const createdDate = new Date().toISOString();
   const passwordHash = crypto.createHash('sha256').update(data.password).digest('hex');
 
-  // Attempt to link Shopify customer ID automatically by email
+  // Attempt to link Shopify customer ID automatically by email, or create a new customer
   let shopifyCustomerId = data.shopifyCustomerId || null;
   if (!shopifyCustomerId) {
     try {
-      const shopifyCustomer = await findCustomerByEmail(shop, data.email);
+      let shopifyCustomer = await findCustomerByEmail(shop, data.email);
+      if (!shopifyCustomer) {
+        shopifyCustomer = await createCustomerInShopify(shop, data.email, data.studentName);
+      }
       if (shopifyCustomer) {
         shopifyCustomerId = shopifyCustomer.id;
       }
     } catch (e) {
-      console.warn(`Could not associate student with Shopify customer: ${(e as Error).message}`);
+      console.warn(`Could not associate or create student as a Shopify customer: ${(e as Error).message}`);
     }
   }
 
@@ -124,6 +127,33 @@ export async function loginStudent(data: LoginStudentRequest): Promise<StudentAu
 
   if (student.studentStatus !== 'Active') {
     throw new Error('Your student account is inactive. Please contact store support.');
+  }
+
+  // Ensure Shopify customer exists and is linked
+  let shopifyCustomerId = student.shopifyCustomerId || null;
+  if (!shopifyCustomerId) {
+    try {
+      let shopifyCustomer = await findCustomerByEmail(shop, student.email);
+      if (!shopifyCustomer) {
+        shopifyCustomer = await createCustomerInShopify(shop, student.email, student.studentName);
+      }
+      if (shopifyCustomer) {
+        shopifyCustomerId = shopifyCustomer.id;
+        await updateStudentInDb(student.id, {
+          studentName: student.studentName,
+          email: student.email,
+          studentStatus: student.studentStatus,
+          shopifyCustomerId,
+          shop: student.shop,
+          phone: student.phone || null,
+          course: student.course || null,
+          bio: student.bio || null
+        });
+        student.shopifyCustomerId = shopifyCustomerId;
+      }
+    } catch (e) {
+      console.warn(`Could not associate or create Shopify customer upon login: ${(e as Error).message}`);
+    }
   }
 
   const token = signJwt({ studentId: student.id, shop: student.shop }, shopifyConfig.jwtSecret, 2592000);
