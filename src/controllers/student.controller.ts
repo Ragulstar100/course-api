@@ -19,12 +19,32 @@ import { findCustomerByEmail, normalizeShop } from '../service/shopify.service.j
 
 
 export async function register(req: Request, res: Response): Promise<void> {
-  const rawShop = req.body.shop || (req.query.shop as string);
-  if (!rawShop) {
-    res.status(400).json({ error: 'Shop domain missing' });
+  const rawShop = req.body.shop || (req.query.shop as string) || 'devstore-k71vvnrv.myshopify.com';
+  const shop = normalizeShop(rawShop);
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!req.body.email || !emailRegex.test(req.body.email.trim())) {
+    res.status(400).json({ error: 'Invalid email address format' });
     return;
   }
-  const shop = normalizeShop(rawShop);
+
+  // Enforce that Name is not an email
+  if (emailRegex.test(req.body.studentName?.trim()) || req.body.studentName?.trim().includes('@')) {
+    res.status(400).json({ error: 'Full Name cannot be an email address' });
+    return;
+  }
+
+  // Enforce Name length
+  if (!req.body.studentName || req.body.studentName.trim().length < 2) {
+    res.status(400).json({ error: 'Full Name must be at least 2 characters long' });
+    return;
+  }
+
+  // Enforce Password length
+  if (!req.body.password || req.body.password.length < 6) {
+    res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    return;
+  }
 
   try {
     const student = await registerStudent({ ...req.body, shop });
@@ -35,11 +55,7 @@ export async function register(req: Request, res: Response): Promise<void> {
 }
 
 export async function login(req: Request, res: Response): Promise<void> {
-  const rawShop = req.body.shop || (req.query.shop as string);
-  if (!rawShop) {
-    res.status(400).json({ error: 'Shop domain missing' });
-    return;
-  }
+  const rawShop = req.body.shop || (req.query.shop as string) || 'devstore-k71vvnrv.myshopify.com';
   const shop = normalizeShop(rawShop);
 
   try {
@@ -66,12 +82,8 @@ export async function getAllStudents(req: Request, res: Response): Promise<void>
 }
 
 export async function getStudentById(req: Request, res: Response): Promise<void> {
-  const rawShop = req.shop || req.body.shop || (req.query.shop as string);
+  const rawShop = req.shop || req.body.shop || (req.query.shop as string) || 'devstore-k71vvnrv.myshopify.com';
   const id = req.params.id as string;
-  if (!rawShop) {
-    res.status(400).json({ error: 'Shop domain missing' });
-    return;
-  }
   const shop = normalizeShop(rawShop);
 
   try {
