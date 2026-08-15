@@ -97,22 +97,6 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
 export async function loginStudent(data: LoginStudentRequest): Promise<StudentAuthResponse> {
   const shop = data.shop.trim().toLowerCase();
 
-  // Hardcoded Admin login check
-  if (data.email === 'test' && data.password === 'test') {
-    return {
-      id: 'admin_id',
-      studentName: 'Admin Test',
-      email: 'test',
-      studentStatus: 'Active',
-      createdDate: new Date().toISOString(),
-      shop: shop,
-      token: 'mock_admin_token',
-      phone: null,
-      course: null,
-      bio: null,
-      isAdmin: true,
-    };
-  }
 
   const student = await selectStudentByEmail(data.email, shop);
   

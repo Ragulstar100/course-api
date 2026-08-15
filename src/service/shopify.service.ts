@@ -2,88 +2,6 @@ import axios from 'axios';
 import { selectSessionsByShop } from '../dal/merchant.dal.js';
 import { shopifyConfig } from '../../config.js';
 
-// Predefined mock data for local testing or mock credentials
-const MOCK_SHOP_INFO = {
-  name: "Mock Dev Store",
-  email: "admin@devstore.myshopify.com",
-  primaryDomain: {
-    url: "https://devstore.myshopify.com"
-  },
-  currencyCode: "USD",
-  ianaTimezone: "America/New_York"
-};
-
-const MOCK_PRODUCTS = [
-  {
-    id: "gid://shopify/Product/1234567890",
-    title: "TypeScript Advanced Course Pack",
-    handle: "typescript-advanced-course-pack",
-    description: "Premium access package for all TypeScript courses.",
-    status: "ACTIVE",
-    images: {
-      edges: [
-        {
-          node: {
-            url: "https://cdn.shopify.com/s/files/1/0000/0000/files/ts-course.png",
-            altText: "TypeScript Advanced"
-          }
-        }
-      ]
-    },
-    variants: {
-      edges: [
-        {
-          node: {
-            price: "99.99"
-          }
-        }
-      ]
-    }
-  },
-  {
-    id: "gid://shopify/Product/9876543210",
-    title: "React Masterclass Bundle",
-    handle: "react-masterclass-bundle",
-    description: "Full access to the React Masterclass series.",
-    status: "ACTIVE",
-    images: {
-      edges: [
-        {
-          node: {
-            url: "https://cdn.shopify.com/s/files/1/0000/0000/files/react-course.png",
-            altText: "React Masterclass"
-          }
-        }
-      ]
-    },
-    variants: {
-      edges: [
-        {
-          node: {
-            price: "149.99"
-          }
-        }
-      ]
-    }
-  }
-];
-
-const MOCK_CUSTOMERS = [
-  {
-    id: "gid://shopify/Customer/1122334455",
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    phone: "+1234567890"
-  },
-  {
-    id: "gid://shopify/Customer/5544332211",
-    firstName: "Jane",
-    lastName: "Smith",
-    email: "jane.smith@example.com",
-    phone: "+0987654321"
-  }
-];
 
 export async function getAccessTokenForShop(shop: string): Promise<string | null> {
   try {
@@ -108,147 +26,27 @@ export async function getAccessTokenForShop(shop: string): Promise<string | null
 export async function makeGraphQLRequest(shop: string, query: string, variables: any = {}): Promise<any> {
   const token = await getAccessTokenForShop(shop);
 
-  // If no token or is a mock token, intercept and return mock responses to allow testing
-  if (!token || token === 'mock_admin_token' || token.startsWith('shpat_mock') || token.startsWith('mock_')) {
-    console.log(`[Shopify Mock API] Intercepting request for shop ${shop} (Token type: ${token ? 'mock' : 'missing'})`);
-    return handleMockRequest(query, variables);
+  if (!token) {
+    throw new Error(`Missing Shopify Access Token for shop: ${shop}`);
   }
 
-  try {
-    const cleanShop = shop.includes('.') ? shop : `${shop}.myshopify.com`;
-    const response = await axios.post(
-      `https://${cleanShop}/admin/api/2026-07/graphql.json`,
-      { query, variables },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': token,
-        },
-      }
-    );
-
-    if (response.data && response.data.errors) {
-      throw new Error(`Shopify GraphQL Errors: ${JSON.stringify(response.data.errors)}`);
+  const cleanShop = shop.includes('.') ? shop : `${shop}.myshopify.com`;
+  const response = await axios.post(
+    `https://${cleanShop}/admin/api/2026-07/graphql.json`,
+    { query, variables },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': token,
+      },
     }
+  );
 
-    return response.data;
-  } catch (error: any) {
-    console.warn(`[Shopify Service Warning] Real GraphQL API request failed for ${shop}. Falling back to mock data. Error: ${error.message}`);
-    // If real request fails (e.g. network timeout or invalid token in development), fallback to mock data to prevent breaking the flow
-    return handleMockRequest(query, variables);
-  }
-}
-
-function handleMockRequest(query: string, variables: any): any {
-  const normalizedQuery = query.replace(/\s+/g, ' ').trim();
-
-  // Mock customerCreate mutation
-  if (normalizedQuery.includes('mutation CreateCustomer') || normalizedQuery.includes('customerCreate')) {
-    const input = variables.input || {};
-    const mockId = `gid://shopify/Customer/mock-${Math.floor(Math.random() * 100000000)}`;
-    return {
-      data: {
-        customerCreate: {
-          customer: {
-            id: mockId,
-            email: input.email,
-            firstName: input.firstName,
-            lastName: input.lastName
-          },
-          userErrors: []
-        }
-      }
-    };
+  if (response.data && response.data.errors) {
+    throw new Error(`Shopify GraphQL Errors: ${JSON.stringify(response.data.errors)}`);
   }
 
-  // Mock productCreate mutation
-  if (normalizedQuery.includes('mutation CreateProduct') || normalizedQuery.includes('productCreate')) {
-    const input = variables.input || {};
-    const mockId = `gid://shopify/Product/mock-${Math.floor(Math.random() * 100000000)}`;
-    return {
-      data: {
-        productCreate: {
-          product: {
-            id: mockId,
-            title: input.title
-          },
-          userErrors: []
-        }
-      }
-    };
-  }
-
-  // 1. Shop info query
-  if (normalizedQuery.includes('shop {')) {
-    return { data: { shop: MOCK_SHOP_INFO } };
-  }
-
-  // 2. Product details query
-  if (normalizedQuery.includes('product(id:')) {
-    const prodId = variables.id || '';
-    const match = MOCK_PRODUCTS.find(p => p.id === prodId || p.id.endsWith(prodId));
-    if (match) {
-      return { data: { product: match } };
-    }
-    // Return custom mock product details if not matching standard mocks
-    return {
-      data: {
-        product: {
-          id: prodId || "gid://shopify/Product/mock-custom",
-          title: "Mock Course Product Partner",
-          description: "This is a mock product dynamically created for your course link.",
-          status: "ACTIVE",
-          images: { edges: [] },
-          variants: { edges: [{ node: { price: "49.99" } }] }
-        }
-      }
-    };
-  }
-
-  // 3. Products list query
-  if (normalizedQuery.includes('products(')) {
-    return {
-      data: {
-        products: {
-          edges: MOCK_PRODUCTS.map(p => ({ node: p }))
-        }
-      }
-    };
-  }
-
-  // 4. Customers query (search/find or list)
-  if (normalizedQuery.includes('customers(')) {
-    if (variables.query || normalizedQuery.includes('query:')) {
-      // Searching by email
-      const searchStr = variables.query || '';
-      const emailMatch = searchStr.match(/email:['"]?([^'"]+)['"]?/);
-      const email = emailMatch ? emailMatch[1] : '';
-      
-      const found = MOCK_CUSTOMERS.find(c => c.email.toLowerCase() === email?.toLowerCase());
-      if (found) {
-        return {
-          data: {
-            customers: {
-              edges: [{ node: found }]
-            }
-          }
-        };
-      }
-      return { data: { customers: { edges: [] } } };
-    }
-
-    // Listing customers
-    return {
-      data: {
-        customers: {
-          edges: MOCK_CUSTOMERS.map(c => ({ node: c }))
-        }
-      }
-    };
-  }
-
-  // Default fallback empty data response
-  return { data: {} };
+  return response.data;
 }
 
 // ==========================================

@@ -104,11 +104,6 @@ export async function shopifyAuthMiddleware(req: Request, res: Response, next: N
     token = authHeader.substring(7);
   }
 
-  // Handle hardcoded admin bypass
-  if (token === 'mock_admin_token') {
-    req.shop = shopHeader || 'sample';
-    return next();
-  }
 
   // Case 1: Simple shop header provided (e.g. for development or basic queries)
   if (!token && shopHeader) {
