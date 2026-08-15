@@ -2,7 +2,7 @@ import { type Request, type Response } from 'express';
 import crypto from 'crypto';
 import axios from 'axios';
 import { registerMerchant, loginMerchant } from '../service/merchant.service.js';
-import { insertSession, selectStoreByShop, insertStore, selectSessionsByShop } from '../dal/merchant.dal.js';
+import { insertSession, selectStoreByShop, insertStore } from '../dal/merchant.dal.js';
 import type { ShopifySession, MerchantStore } from '../models/merchant.model.js';
 import { shopifyConfig } from '../../config.js';
 import { signJwt } from '../middleware/auth.middleware.js';
@@ -147,12 +147,6 @@ export async function autoLogin(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    const sessions = await selectSessionsByShop(shop);
-    if (sessions.length === 0) {
-      res.status(401).json({ error: 'App not installed on this shop' });
-      return;
-    }
-
     let store = await selectStoreByShop(shop);
     if (!store) {
       const newStore: MerchantStore = {
