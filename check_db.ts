@@ -9,6 +9,10 @@ async function checkDb() {
   console.log('\n--- Stores ---');
   const stores = await dbAll('SELECT * FROM stores');
   console.log(JSON.stringify(stores, null, 2));
+
+  console.log('\n--- Students ---');
+  const students = await dbAll('SELECT * FROM students');
+  console.log(JSON.stringify(students, null, 2));
 }
 
 checkDb().then(() => process.exit(0)).catch(err => {

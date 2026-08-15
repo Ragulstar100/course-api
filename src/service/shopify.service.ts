@@ -3,9 +3,19 @@ import { selectSessionsByShop } from '../dal/merchant.dal.js';
 import { shopifyConfig } from '../../config.js';
 
 
+export function normalizeShop(shop: string): string {
+  if (!shop) return '';
+  const cleaned = shop.trim().toLowerCase();
+  if (cleaned === 'test' || cleaned === 'shop') {
+    return cleaned;
+  }
+  return cleaned.includes('.') ? cleaned : `${cleaned}.myshopify.com`;
+}
+
 export async function getAccessTokenForShop(shop: string): Promise<string | null> {
+  const normalizedShop = normalizeShop(shop);
   try {
-    const sessions = await selectSessionsByShop(shop);
+    const sessions = await selectSessionsByShop(normalizedShop);
     if (sessions && sessions.length > 0) {
       const activeSession = sessions.find(s => s.accessToken);
       if (activeSession?.accessToken) {
@@ -13,7 +23,7 @@ export async function getAccessTokenForShop(shop: string): Promise<string | null
       }
     }
   } catch (error) {
-    console.error(`Error querying session for shop ${shop}:`, error);
+    console.error(`Error querying session for shop ${normalizedShop}:`, error);
   }
 
   // Fallback to global SHOPIFY_ACCESS_TOKEN if set in env
@@ -24,15 +34,15 @@ export async function getAccessTokenForShop(shop: string): Promise<string | null
 }
 
 export async function makeGraphQLRequest(shop: string, query: string, variables: any = {}): Promise<any> {
-  const token = await getAccessTokenForShop(shop);
+  const normalizedShop = normalizeShop(shop);
+  const token = await getAccessTokenForShop(normalizedShop);
 
   if (!token) {
-    throw new Error(`Missing Shopify Access Token for shop: ${shop}`);
+    throw new Error(`Missing Shopify Access Token for shop: ${normalizedShop}`);
   }
 
-  const cleanShop = shop.includes('.') ? shop : `${shop}.myshopify.com`;
   const response = await axios.post(
-    `https://${cleanShop}/admin/api/2026-07/graphql.json`,
+    `https://${normalizedShop}/admin/api/2026-07/graphql.json`,
     { query, variables },
     {
       headers: {
@@ -127,10 +137,7 @@ export async function fetchCustomers(shop: string, limit: number = 10): Promise<
         edges {
           node {
             id
-            firstName
-            lastName
             email
-            phone
           }
         }
       }
@@ -148,10 +155,7 @@ export async function findCustomerByEmail(shop: string, email: string): Promise<
         edges {
           node {
             id
-            firstName
-            lastName
             email
-            phone
           }
         }
       }
@@ -217,8 +221,6 @@ export async function createCustomerInShopify(shop: string, email: string, name:
         customer {
           id
           email
-          firstName
-          lastName
         }
         userErrors {
           field

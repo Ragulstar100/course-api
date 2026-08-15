@@ -14,16 +14,17 @@ import {
   deleteEnrollment,
   fetchDashboardMetrics
 } from '../service/student.service.js'; 
-import { findCustomerByEmail } from '../service/shopify.service.js';
+import { findCustomerByEmail, normalizeShop } from '../service/shopify.service.js';
 
 
 
 export async function register(req: Request, res: Response): Promise<void> {
-  const shop = req.body.shop || (req.query.shop as string);
-  if (!shop) {
+  const rawShop = req.body.shop || (req.query.shop as string);
+  if (!rawShop) {
     res.status(400).json({ error: 'Shop domain missing' });
     return;
   }
+  const shop = normalizeShop(rawShop);
 
   try {
     const student = await registerStudent({ ...req.body, shop });
@@ -34,11 +35,12 @@ export async function register(req: Request, res: Response): Promise<void> {
 }
 
 export async function login(req: Request, res: Response): Promise<void> {
-  const shop = req.body.shop || (req.query.shop as string);
-  if (!shop) {
+  const rawShop = req.body.shop || (req.query.shop as string);
+  if (!rawShop) {
     res.status(400).json({ error: 'Shop domain missing' });
     return;
   }
+  const shop = normalizeShop(rawShop);
 
   try {
     const student = await loginStudent({ ...req.body, shop });
@@ -64,12 +66,13 @@ export async function getAllStudents(req: Request, res: Response): Promise<void>
 }
 
 export async function getStudentById(req: Request, res: Response): Promise<void> {
-  const shop = req.shop || req.body.shop || (req.query.shop as string);
+  const rawShop = req.shop || req.body.shop || (req.query.shop as string);
   const id = req.params.id as string;
-  if (!shop) {
+  if (!rawShop) {
     res.status(400).json({ error: 'Shop domain missing' });
     return;
   }
+  const shop = normalizeShop(rawShop);
 
   try {
     const student = await fetchStudentById(id, shop);
@@ -96,11 +99,12 @@ export async function getStudentById(req: Request, res: Response): Promise<void>
 }
 
 export async function updateStudent(req: Request, res: Response): Promise<void> {
-  const shop = req.shop || req.body.shop;
-  if (!shop) {
+  const rawShop = req.shop || req.body.shop;
+  if (!rawShop) {
     res.status(400).json({ error: 'Shop domain missing from request context' });
     return;
   }
+  const shop = normalizeShop(rawShop);
 
   try {
     const id = req.params.id as string;

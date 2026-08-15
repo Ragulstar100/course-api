@@ -2,6 +2,7 @@ import { type Request, type Response, type NextFunction } from 'express';
 import crypto from 'crypto';
 import { shopifyConfig } from '../../config.js';
 import { selectStudentByIdSimple } from '../dal/student.dal.js';
+import { normalizeShop } from '../service/shopify.service.js';
 
 // Extend express Request interface
 declare global {
@@ -107,7 +108,7 @@ export async function shopifyAuthMiddleware(req: Request, res: Response, next: N
 
   // Case 1: Simple shop header provided (e.g. for development or basic queries)
   if (!token && shopHeader) {
-    req.shop = shopHeader;
+    req.shop = normalizeShop(shopHeader);
     return next();
   }
 
@@ -119,7 +120,7 @@ export async function shopifyAuthMiddleware(req: Request, res: Response, next: N
   // Case 2: Custom JWT signed by our own server (Simulated mode)
   const appVerified = verifyJwt(token, shopifyConfig.jwtSecret);
   if (appVerified && appVerified.shop) {
-    req.shop = appVerified.shop;
+    req.shop = normalizeShop(appVerified.shop);
     return next();
   }
 
@@ -131,7 +132,7 @@ export async function shopifyAuthMiddleware(req: Request, res: Response, next: N
       // Shopify JWT payloads contain dest URL e.g. "https://shop-domain.myshopify.com/admin"
       if (shopifyVerified.dest) {
         const destUrl = new URL(shopifyVerified.dest);
-        req.shop = destUrl.hostname;
+        req.shop = normalizeShop(destUrl.hostname);
         return next();
       }
     }
@@ -170,6 +171,6 @@ export async function studentAuthMiddleware(req: Request, res: Response, next: N
   }
 
   req.studentId = decoded.studentId;
-  req.shop = decoded.shop;
+  req.shop = normalizeShop(decoded.shop);
   next();
 }

@@ -25,13 +25,13 @@ import {
 } from '../dal/enrollment.dal.js';
 import { signJwt } from '../middleware/auth.middleware.js';
 import { shopifyConfig } from '../../config.js';
-import { findCustomerByEmail, createCustomerInShopify } from './shopify.service.js';
+import { findCustomerByEmail, createCustomerInShopify, normalizeShop } from './shopify.service.js';
 // ==========================================
 // STUDENT SERVICES
 // ==========================================
 
 export async function registerStudent(data: RegisterStudentRequest): Promise<StudentAuthResponse> {
-  const shop = data.shop.trim().toLowerCase();
+  const shop = normalizeShop(data.shop);
   
   const existing = await selectStudentByEmail(data.email, shop);
   if (existing) {
@@ -95,7 +95,7 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
 
 
 export async function loginStudent(data: LoginStudentRequest): Promise<StudentAuthResponse> {
-  const shop = data.shop.trim().toLowerCase();
+  const shop = normalizeShop(data.shop);
 
 
   const student = await selectStudentByEmail(data.email, shop);
@@ -158,19 +158,22 @@ export async function loginStudent(data: LoginStudentRequest): Promise<StudentAu
 }
 
 export async function fetchAllStudents(shop: string): Promise<Omit<Student, "passwordHash">[]> {
-  const students = await selectAllStudents(shop);
+  const cleanShop = normalizeShop(shop);
+  const students = await selectAllStudents(cleanShop);
   return students.map(({ passwordHash: _, ...rest }) => rest);
 }
 
 export async function fetchStudentById(id: string, shop: string): Promise<Omit<Student, "passwordHash"> | null> {
-  const student = await selectStudentById(id, shop);
+  const cleanShop = normalizeShop(shop);
+  const student = await selectStudentById(id, cleanShop);
   if (!student) return null;
   const { passwordHash: _, ...rest } = student;
   return rest;
 }
 
 export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<Student, "passwordHash"> | null> {
-  const existing = await selectStudentById(data.id, data.shop);
+  const cleanShop = normalizeShop(data.shop);
+  const existing = await selectStudentById(data.id, cleanShop);
   if (!existing) return null;
 
   let shopifyCustomerId = data.shopifyCustomerId !== undefined ? data.shopifyCustomerId : (existing.shopifyCustomerId || null);
@@ -178,7 +181,7 @@ export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<St
   // If email has changed, recheck for a matching Shopify customer
   if (data.email && data.email !== existing.email && !data.shopifyCustomerId) {
     try {
-      const shopifyCustomer = await findCustomerByEmail(data.shop, data.email);
+      const shopifyCustomer = await findCustomerByEmail(cleanShop, data.email);
       shopifyCustomerId = shopifyCustomer ? shopifyCustomer.id : null;
     } catch (e) {
       console.warn(`Could not re-associate student with Shopify customer on email update: ${(e as Error).message}`);
@@ -190,7 +193,7 @@ export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<St
     email: data.email ?? existing.email,
     studentStatus: data.studentStatus ?? existing.studentStatus,
     shopifyCustomerId,
-    shop: data.shop,
+    shop: cleanShop,
     phone: data.phone !== undefined ? data.phone : (existing.phone || null),
     course: data.course !== undefined ? data.course : (existing.course || null),
     bio: data.bio !== undefined ? data.bio : (existing.bio || null),
@@ -204,8 +207,8 @@ export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<St
 }
 
 export async function removeStudent(id: string, shop: string): Promise<boolean> {
- 
-  return deleteStudentFromDb(id, shop);
+  const cleanShop = normalizeShop(shop);
+  return deleteStudentFromDb(id, cleanShop);
 }
 
 // ==========================================
@@ -217,37 +220,38 @@ export async function enrollStudentInCourse(data: {
   courseId: string;
   shop: string;
 }): Promise<any> {
+  const cleanShop = normalizeShop(data.shop);
   const enrollment = {
     id: crypto.randomUUID(),
     studentId: data.studentId,
     courseId: data.courseId,
     enrollmentDate: new Date().toISOString(),
     enrollmentStatus: 'In Progress' as const,
-    shop: data.shop,
+    shop: cleanShop,
   };
   return insertEnrollment(enrollment);
 }
 
 export async function fetchStudentEnrollments(studentId: string, shop: string) {
-  return selectEnrollmentsByStudent(studentId, shop);
+  return selectEnrollmentsByStudent(studentId, normalizeShop(shop));
 }
 
 export async function fetchAllShopEnrollments(shop: string) {
-  return selectAllEnrollments(shop);
+  return selectAllEnrollments(normalizeShop(shop));
 }
 
 export async function fetchRecentShopEnrollments(shop: string, limit: number) {
-  return selectRecentEnrollments(shop, limit);
+  return selectRecentEnrollments(normalizeShop(shop), limit);
 }
 
 export async function updateEnrollmentStatus(id: string, status: 'In Progress' | 'Completed', shop: string) {
-  return updateEnrollmentStatusInDb(id, status, shop);
+  return updateEnrollmentStatusInDb(id, status, normalizeShop(shop));
 }
 
 export async function deleteEnrollment(id: string, shop: string) {
-  return deleteEnrollmentFromDb(id, shop);
+  return deleteEnrollmentFromDb(id, normalizeShop(shop));
 }
 
 export async function fetchDashboardMetrics(shop: string) {
-  return getMerchantDashboardMetrics(shop);
+  return getMerchantDashboardMetrics(normalizeShop(shop));
 }
