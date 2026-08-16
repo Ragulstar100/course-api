@@ -60,6 +60,7 @@ export async function selectAllEnrollments(shop: string): Promise<EnrollmentDeta
     WHERE e.shop = ?
     ORDER BY e.enrollmentDate DESC
   `;
+  console.log('shop:', shop);
   return dbAll<EnrollmentDetails>(query, [shop]);
 }
 

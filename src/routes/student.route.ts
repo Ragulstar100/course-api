@@ -32,6 +32,7 @@ studentRouter.get(
   (req, res, next) => { req.params.id = req.studentId!; next(); }, 
   getStudentById
 );
+
 studentRouter.put(
   '/student-profile', 
   studentAuthMiddleware, 
