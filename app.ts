@@ -8,28 +8,14 @@ import { initializeDatabase } from './src/dal/db.js';
 
 const app: exp.Application = exp();
 
-// Custom CORS middleware to allow cross-origin requests from frontend Vite development server (localhost:5173)
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Shop-Domain');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-    return;
-  }
-  next();
-});
-
 app.use(exp.json());
 
-// Mount routers
+
 app.use('/courses', courseRouter);
 app.use('/student', studentRouter);
 app.use('/shopify', merchantRouter);
 
 
-// Initialize DB and listen
 initializeDatabase().then(() => {
 
   app.listen(server.port, () => {

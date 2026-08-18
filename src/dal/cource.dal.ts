@@ -1,11 +1,16 @@
 import { dbGet, dbRun, dbAll } from './db.js';
-import type { Course } from '../models/cource.model.js';
+import type { Course,ICourceRepositery } from '../models/cource.model.js';
+import type { Shopify } from '@shopify/shopify-api';
+import { ShopifyService } from '../service/shopify.service.js';
 
 // ==========================================
 // DAL FUNCTIONS (Database Operations Scoped by Shop)
 // ==========================================
 
-export async function insertCourse(course: Course): Promise<Course> {
+
+export class CourceDalRepositery implements ICourceRepositery {
+
+async insertCourse(course: Course): Promise<Course> {
   const query = `
     INSERT INTO courses (id, courseTitle, description, instructorName, category, duration, courseStatus, createdDate, shopifyProductId, shop)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -25,32 +30,28 @@ export async function insertCourse(course: Course): Promise<Course> {
   return course;
 }
 
-export async function selectAllCourses(shop: string): Promise<Course[]> {
+async selectAllCourses(shop: string): Promise<Course[]> {
   const query = 'SELECT * FROM courses WHERE shop = ?';
   return dbAll<Course>(query, [shop]);
 }
 
-export async function selectAllActiveCourses(shop: string): Promise<Course[]> {
+ async selectAllActiveCourses(shop: string): Promise<Course[]> {
   const query = "SELECT * FROM courses WHERE shop = ? AND courseStatus = 'Active'";
   return dbAll<Course>(query, [shop]);
 }
 
-export async function selectCourseById(id: string, shop: string): Promise<Course | null> {
+ async selectCourseById(id: string, shop: string): Promise<Course | null> {
   const query = 'SELECT * FROM courses WHERE id = ? AND shop = ?';
   return dbGet<Course>(query, [id, shop]);
 }
 
-export async function selectCourseByIdSimple(id: string): Promise<Course | null> {
+ async selectCourseByIdSimple(id: string): Promise<Course | null> {
   const query = 'SELECT * FROM courses WHERE id = ?';
   return dbGet<Course>(query, [id]);
 }
 
-export async function updateCourseInDb(
-  id: string,
-  updatedFields: Partial<Omit<Course, "id" | "createdDate" | "shop">>,
-  shop: string
-): Promise<Course | null> {
-  const existing = await selectCourseById(id, shop);
+ async updateCourseInDb( id: string,updatedFields: Partial<Omit<Course, "id" | "createdDate" | "shop">>,shop: string): Promise<Course | null> {
+  const existing = await this.selectCourseById(id, shop);
   if (!existing) return null;
 
   const title = updatedFields.courseTitle !== undefined ? updatedFields.courseTitle : existing.courseTitle;
@@ -68,16 +69,18 @@ export async function updateCourseInDb(
   `;
 
   await dbRun(query, [title, desc, inst, cat, dur, status, prodId || null, id, shop]);
-  return selectCourseById(id, shop);
+  return this.selectCourseById(id, shop);
 }
 
-export async function deleteCourseFromDb(id: string, shop: string): Promise<boolean> {
+ async deleteCourseFromDb(id: string, shop: string): Promise<boolean> {
   const query = 'DELETE FROM courses WHERE id = ? AND shop = ?';
   const result = await dbRun(query, [id, shop]);
   return result.changes > 0;
 }
 
-export async function selectAllCoursesGlobal(): Promise<Course[]> {
+async selectAllCoursesGlobal(): Promise<Course[]> {
   const query = 'SELECT * FROM courses';
   return dbAll<Course>(query);
+}
+
 }

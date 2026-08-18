@@ -20,3 +20,9 @@ export const shopifyConfig = {
   jwtSecret: process.env.JWT_SECRET || 'super_secret_course_academy_jwt_key',
   accessToken: process.env.SHOPIFY_ACCESS_TOKEN || '',
 };
+
+//depende
+
+
+
+

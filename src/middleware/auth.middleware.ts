@@ -1,8 +1,9 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import crypto from 'crypto';
 import { shopifyConfig } from '../../config.js';
-import { selectStudentByIdSimple } from '../dal/student.dal.js';
 import { normalizeShop } from '../service/shopify.service.js';
+import { StudentRepository } from '../dal/student.dal.js';
+import type { IStudentRepository } from '../models/student.model.js';
 
 // Extend express Request interface
 declare global {
@@ -14,6 +15,8 @@ declare global {
     }
   }
 }
+
+const studentRep:IStudentRepository=new StudentRepository()
 
 // ==========================================
 // CUSTOM JWT UTILITIES (Zero-dependency)
@@ -164,7 +167,7 @@ export async function studentAuthMiddleware(req: Request, res: Response, next: N
   }
 
   // Validate student actually exists in the database
-  const student = await selectStudentByIdSimple(decoded.studentId);
+  const student = await studentRep.selectStudentByIdSimple(decoded.studentId);
   if (!student || student.studentStatus !== 'Active') {
     res.status(403).json({ error: 'Access denied. Account is inactive or does not exist.' });
     return;
