@@ -2,13 +2,13 @@ import { dbGet, dbRun, dbAll } from './db.js';
 import type { Student } from '../models/student.model.js';
 
 // ==========================================
-// DAL FUNCTIONS (Student Database Operations Scoped by Shop)
+// DAL FUNCTIONS (Student Database Operations )
 // ==========================================
 
 export async function insertStudent(student: Student): Promise<Student> {
   const query = `
-    INSERT INTO students (id, studentName, email, passwordHash, studentStatus, createdDate, shopifyCustomerId, shop, phone, course, bio)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO students (id, studentName, email, passwordHash, studentStatus, createdDate, shopifyCustomerId, phone, course, bio)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   await dbRun(query, [
     student.id,
@@ -31,12 +31,12 @@ export async function selectStudentByEmail(email: string): Promise<Student | nul
 }
 
 export async function selectAllStudents(): Promise<Student[]> {
-  const query = 'SELECT * FROM students WHERE shop = ?';
+  const query = 'SELECT * FROM students';
   return dbAll<Student>(query);
 }
 
 export async function selectStudentById(id: string): Promise<Student | null> {
-  const query = 'SELECT * FROM students WHERE id = ? AND shop = ?';
+  const query = 'SELECT * FROM students WHERE id = ?';
   return dbGet<Student>(query, [id]);
 }
 
@@ -52,7 +52,7 @@ export async function updateStudentInDb(
   const query = `
     UPDATE students 
     SET studentName = ?, email = ?, studentStatus = ?, shopifyCustomerId = ?, phone = ?, course = ?, bio = ?
-    WHERE id = ? AND shop = ?
+    WHERE id = ? 
   `;
   await dbRun(query, [
     updatedFields.studentName,

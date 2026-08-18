@@ -76,10 +76,8 @@ export async function getAllStudents(req: Request, res: Response): Promise<void>
 }
 
 export async function getStudentById(req: Request, res: Response): Promise<void> {
-  const rawShop = req.shop || req.body.shop || (req.query.shop as string) || 'devstore-k71vvnrv.myshopify.com';
-  const id = req.params.id as string;
-  const shop = normalizeShop(rawShop);
 
+  const id = req.params.id as string;
   try {
     const student = await fetchStudentById(id);
     if (!student) {
@@ -105,16 +103,11 @@ export async function getStudentById(req: Request, res: Response): Promise<void>
 }
 
 export async function updateStudent(req: Request, res: Response): Promise<void> {
-  const rawShop = req.shop || req.body.shop;
-  if (!rawShop) {
-    res.status(400).json({ error: 'Shop domain missing from request context' });
-    return;
-  }
-  const shop = normalizeShop(rawShop);
+
 
   try {
     const id = req.params.id as string;
-    const updatedStudent = await modifyStudent({ id, shop, ...req.body });
+    const updatedStudent = await modifyStudent({ id, ...req.body });
     if (!updatedStudent) {
       res.status(404).json({ error: 'Student not found' });
       return;
@@ -151,7 +144,7 @@ export async function removeStudent(req: Request, res: Response): Promise<void> 
 
 export async function enroll(req: Request, res: Response): Promise<void> {
   // Can be called by student (studentAuthMiddleware) or admin (shopifyAuthMiddleware)
-  const shop = req.shop;
+  const shop = req.body.shop;
   const studentId = req.studentId || req.body.studentId;
   const courseId = req.body.courseId;
 
@@ -172,15 +165,11 @@ export async function getEnrollments(req: Request, res: Response): Promise<void>
   const shop = req.shop || (req.query.shop as string);
   const studentId = req.studentId || (req.query.studentId as string);
 
-  if (!shop) {
-    res.status(400).json({ error: 'Shop domain missing' });
-    return;
-  }
 
   try {
     if (studentId) {
       // Fetch for specific student (e.g. Student Portal view or Admin checking a student)
-      const enrollments = await fetchStudentEnrollments(studentId, shop);
+      const enrollments = await fetchStudentEnrollments(studentId);
       res.status(200).json(enrollments);
     } else {
       // Fetch all for shop (Admin Dashboard view)

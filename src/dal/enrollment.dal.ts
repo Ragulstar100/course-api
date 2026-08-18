@@ -40,15 +40,15 @@ export async function insertEnrollment(enrollment: Enrollment): Promise<Enrollme
   }
 }
 
-export async function selectEnrollmentsByStudent(studentId: string, shop: string): Promise<EnrollmentDetails[]> {
+export async function selectEnrollmentsByStudent(studentId: string): Promise<EnrollmentDetails[]> {
   const query = `
     SELECT e.*, s.studentName, s.email as studentEmail, c.courseTitle, c.category, c.duration
     FROM enrollments e
     JOIN students s ON e.studentId = s.id
     JOIN courses c ON e.courseId = c.id
-    WHERE e.studentId = ? AND e.shop = ?
+    WHERE e.studentId = ?
   `;
-  return dbAll<EnrollmentDetails>(query, [studentId, shop]);
+  return dbAll<EnrollmentDetails>(query, [studentId]);
 }
 
 export async function selectAllEnrollments(shop: string): Promise<EnrollmentDetails[]> {

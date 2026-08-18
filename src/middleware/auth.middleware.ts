@@ -158,7 +158,7 @@ export async function studentAuthMiddleware(req: Request, res: Response, next: N
   const token = authHeader.substring(7);
   const decoded = verifyJwt(token, shopifyConfig.jwtSecret);
 
-  if (!decoded || !decoded.studentId || !decoded.shop) {
+  if (!decoded || !decoded.studentId) {
     res.status(401).json({ error: 'Access denied. Invalid or expired student token.' });
     return;
   }
@@ -171,6 +171,5 @@ export async function studentAuthMiddleware(req: Request, res: Response, next: N
   }
 
   req.studentId = decoded.studentId;
-  req.shop = normalizeShop(decoded.shop);
   next();
 }

@@ -225,8 +225,8 @@ export async function enrollStudentInCourse(data: {
   return insertEnrollment(enrollment);
 }
 
-export async function fetchStudentEnrollments(studentId: string, shop: string) {
-  return selectEnrollmentsByStudent(studentId, normalizeShop(shop));
+export async function fetchStudentEnrollments(studentId: string) {
+  return selectEnrollmentsByStudent(studentId);
 }
 
 export async function fetchAllShopEnrollments(shop: string) {

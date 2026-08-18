@@ -68,9 +68,7 @@ export async function initializeDatabase() {
     )
   `);
 
-  // Re-create courses and students tables with multi-tenant fields if they don't have them
-  // To avoid complex migrations, we drop old tables if they are incompatible.
-  // We'll inspect students and courses schemas to see if they need updates.
+  // Check if existing tables contain the old/unwanted schema (e.g., student table still has shop)
   try {
     const hasOldStudentTable = await dbGet<{ sql: string }>(
       "SELECT sql FROM sqlite_master WHERE type='table' AND name='students'"
@@ -79,7 +77,8 @@ export async function initializeDatabase() {
       "SELECT sql FROM sqlite_master WHERE type='table' AND name='courses'"
     );
 
-    const isOldStudent = hasOldStudentTable && hasOldStudentTable.sql.includes('enrolledCourseId TEXT NOT NULL');
+    // If students table still has 'shop', treat it as old and recreate it
+    const isOldStudent = hasOldStudentTable && hasOldStudentTable.sql.includes('shop');
     const isOldCourse = hasOldCourseTable && !hasOldCourseTable.sql.includes('FOREIGN KEY (shop) REFERENCES stores(shop)');
 
     if (isOldStudent || isOldCourse) {
@@ -92,7 +91,7 @@ export async function initializeDatabase() {
     console.error('Error checking database migration status:', e);
   }
 
-  // 3. Create courses table (multi-tenant)
+  // 3. Create courses table (multi-tenant with shop)
   await dbRun(`
     CREATE TABLE IF NOT EXISTS courses (
       id TEXT PRIMARY KEY,
@@ -107,54 +106,45 @@ export async function initializeDatabase() {
       shop TEXT NOT NULL,
       FOREIGN KEY (shop) REFERENCES stores(shop) ON DELETE CASCADE
     )
-  `);
+  `); 
 
-  // 4. Create students table (multi-tenant)
+  // 4. Create students table (Independent of shop - email is now globally unique)
   await dbRun(`
     CREATE TABLE IF NOT EXISTS students (
       id TEXT PRIMARY KEY,
       studentName TEXT NOT NULL,
-      email TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
       passwordHash TEXT NOT NULL,
       studentStatus TEXT CHECK(studentStatus IN ('Active', 'Inactive')) NOT NULL,
       createdDate TEXT NOT NULL,
       shopifyCustomerId TEXT,
-      shop TEXT NOT NULL,
       phone TEXT,
       course TEXT,
-      bio TEXT,
-      UNIQUE(email, shop)
+      bio TEXT
     )
   `);
 
-  // Run dynamic schema migrations if columns are missing in existing tables
+  // Run dynamic schema migrations for stores or other tables if columns are missing
   try {
     await dbRun('ALTER TABLE stores ADD COLUMN username TEXT');
-  } catch (e) {
-    // Column already exists or error
-  }
+  } catch (e) {}
+
   try {
     await dbRun('ALTER TABLE stores ADD COLUMN passwordHash TEXT');
-  } catch (e) {
-    // Column already exists or error
-  }
-
+  } catch (e) {}
+  
   try {
     await dbRun('ALTER TABLE students ADD COLUMN phone TEXT');
-  } catch (e) {
-    // Column already exists or error
-  }
+  } catch (e) {}
+
   try {
     await dbRun('ALTER TABLE students ADD COLUMN course TEXT');
-  } catch (e) {
-    // Column already exists or error
-  }
+  } catch (e) {}
+
   try {
     await dbRun('ALTER TABLE students ADD COLUMN bio TEXT');
-  } catch (e) {
-    // Column already exists or error
-  }
-
+  } catch (e) {}
+ 
   // 5. Create enrollments table
   await dbRun(`
     CREATE TABLE IF NOT EXISTS enrollments (
@@ -168,7 +158,7 @@ export async function initializeDatabase() {
       FOREIGN KEY (courseId) REFERENCES courses(id) ON DELETE CASCADE,
       UNIQUE(studentId, courseId)
     )
-  `);
-
+  `); 
+   
   console.log('Database schema successfully initialized.');
 }
