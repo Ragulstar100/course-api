@@ -31,9 +31,8 @@ import { findCustomerByEmail, createCustomerInShopify, normalizeShop } from './s
 // ==========================================
 
 export async function registerStudent(data: RegisterStudentRequest): Promise<StudentAuthResponse> {
-  const shop = normalizeShop(data.shop);
   
-  const existing = await selectStudentByEmail(data.email, shop);
+  const existing = await selectStudentByEmail(data.email);
   if (existing) {
     throw new Error('Email is already registered on this store');
   }
@@ -46,9 +45,9 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
   let shopifyCustomerId = data.shopifyCustomerId || null;
   if (!shopifyCustomerId) {
     try {
-      let shopifyCustomer = await findCustomerByEmail(shop, data.email);
+      let shopifyCustomer = await findCustomerByEmail(data.email);
       if (!shopifyCustomer) {
-        shopifyCustomer = await createCustomerInShopify(shop, data.email, data.studentName);
+        shopifyCustomer = await createCustomerInShopify( data.email, data.studentName);
       }
       if (shopifyCustomer) {
         shopifyCustomerId = shopifyCustomer.id;
@@ -66,7 +65,6 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
     studentStatus: "Active",
     createdDate,
     shopifyCustomerId,
-    shop,
     phone: null,
     course: null,
     bio: null,
@@ -75,7 +73,7 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
   await insertStudent(student);
 
   // Generate JWT token
-  const token = signJwt({ studentId: id, shop }, shopifyConfig.jwtSecret, 2592000); // 30 days
+  const token = signJwt({ studentId: id }, shopifyConfig.jwtSecret, 2592000); // 30 days
 
   return {
     id: student.id,
@@ -84,7 +82,6 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
     studentStatus: student.studentStatus,
     createdDate: student.createdDate,
     shopifyCustomerId: student.shopifyCustomerId || null,
-    shop: student.shop,
     token,
     phone: student.phone || null,
     course: student.course || null,
@@ -95,10 +92,10 @@ export async function registerStudent(data: RegisterStudentRequest): Promise<Stu
 
 
 export async function loginStudent(data: LoginStudentRequest): Promise<StudentAuthResponse> {
-  const shop = normalizeShop(data.shop);
 
 
-  const student = await selectStudentByEmail(data.email, shop);
+
+  const student = await selectStudentByEmail(data.email);
   
   if (!student) {
     throw new Error('Invalid email or password');
@@ -117,9 +114,9 @@ export async function loginStudent(data: LoginStudentRequest): Promise<StudentAu
   let shopifyCustomerId = student.shopifyCustomerId || null;
   if (!shopifyCustomerId) {
     try {
-      let shopifyCustomer = await findCustomerByEmail(shop, student.email);
+      let shopifyCustomer = await findCustomerByEmail( student.email);
       if (!shopifyCustomer) {
-        shopifyCustomer = await createCustomerInShopify(shop, student.email, student.studentName);
+        shopifyCustomer = await createCustomerInShopify( student.email, student.studentName);
       }
       if (shopifyCustomer) {
         shopifyCustomerId = shopifyCustomer.id;
@@ -128,7 +125,6 @@ export async function loginStudent(data: LoginStudentRequest): Promise<StudentAu
           email: student.email,
           studentStatus: student.studentStatus,
           shopifyCustomerId,
-          shop: student.shop,
           phone: student.phone || null,
           course: student.course || null,
           bio: student.bio || null
@@ -140,7 +136,7 @@ export async function loginStudent(data: LoginStudentRequest): Promise<StudentAu
     }
   }
 
-  const token = signJwt({ studentId: student.id, shop: student.shop }, shopifyConfig.jwtSecret, 2592000);
+  const token = signJwt({ studentId: student.id }, shopifyConfig.jwtSecret, 2592000);
 
   return {
     id: student.id,
@@ -149,7 +145,6 @@ export async function loginStudent(data: LoginStudentRequest): Promise<StudentAu
     studentStatus: student.studentStatus,
     createdDate: student.createdDate,
     shopifyCustomerId: student.shopifyCustomerId || null,
-    shop: student.shop,
     token,
     phone: student.phone || null,
     course: student.course || null,
@@ -157,23 +152,22 @@ export async function loginStudent(data: LoginStudentRequest): Promise<StudentAu
   };
 }
 
-export async function fetchAllStudents(shop: string): Promise<Omit<Student, "passwordHash">[]> {
-  const cleanShop = normalizeShop(shop);
-  const students = await selectAllStudents(cleanShop);
+export async function fetchAllStudents(): Promise<Omit<Student, "passwordHash">[]> {
+  const students = await selectAllStudents();
   return students.map(({ passwordHash: _, ...rest }) => rest);
 }
 
-export async function fetchStudentById(id: string, shop: string): Promise<Omit<Student, "passwordHash"> | null> {
-  const cleanShop = normalizeShop(shop);
-  const student = await selectStudentById(id, cleanShop);
+export async function fetchStudentById(id: string): Promise<Omit<Student, "passwordHash"> | null> {
+ 
+  const student = await selectStudentById(id);
   if (!student) return null;
   const { passwordHash: _, ...rest } = student;
   return rest;
 }
 
 export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<Student, "passwordHash"> | null> {
-  const cleanShop = normalizeShop(data.shop);
-  const existing = await selectStudentById(data.id, cleanShop);
+
+  const existing = await selectStudentById(data.id);
   if (!existing) return null;
 
   let shopifyCustomerId = data.shopifyCustomerId !== undefined ? data.shopifyCustomerId : (existing.shopifyCustomerId || null);
@@ -181,7 +175,7 @@ export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<St
   // If email has changed, recheck for a matching Shopify customer
   if (data.email && data.email !== existing.email && !data.shopifyCustomerId) {
     try {
-      const shopifyCustomer = await findCustomerByEmail(cleanShop, data.email);
+      const shopifyCustomer = await findCustomerByEmail( data.email);
       shopifyCustomerId = shopifyCustomer ? shopifyCustomer.id : null;
     } catch (e) {
       console.warn(`Could not re-associate student with Shopify customer on email update: ${(e as Error).message}`);
@@ -193,7 +187,6 @@ export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<St
     email: data.email ?? existing.email,
     studentStatus: data.studentStatus ?? existing.studentStatus,
     shopifyCustomerId,
-    shop: cleanShop,
     phone: data.phone !== undefined ? data.phone : (existing.phone || null),
     course: data.course !== undefined ? data.course : (existing.course || null),
     bio: data.bio !== undefined ? data.bio : (existing.bio || null),
@@ -206,9 +199,9 @@ export async function modifyStudent(data: UpdateStudentRequest): Promise<Omit<St
   return rest;
 }
 
-export async function removeStudent(id: string, shop: string): Promise<boolean> {
-  const cleanShop = normalizeShop(shop);
-  return deleteStudentFromDb(id, cleanShop);
+export async function removeStudent(id: string): Promise<boolean> {
+
+  return deleteStudentFromDb(id);
 }
 
 // ==========================================

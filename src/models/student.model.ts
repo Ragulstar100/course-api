@@ -6,7 +6,6 @@ export type Student = {
   studentStatus: "Active" | "Inactive";
   createdDate: string;
   shopifyCustomerId?: string | null;
-  shop: string;
   phone?: string | null;
   course?: string | null;
   bio?: string | null;
@@ -17,14 +16,12 @@ export type RegisterStudentRequest = {
   studentName: string;
   email: string;
   password: string;
-  shop: string;
   shopifyCustomerId?: string | null;
 };
 
 export type LoginStudentRequest = {
   email: string;
   password: string;
-  shop: string;
 };
 
 export type UpdateStudentRequest = {
@@ -33,7 +30,6 @@ export type UpdateStudentRequest = {
   email?: string;
   studentStatus?: "Active" | "Inactive";
   shopifyCustomerId?: string | null;
-  shop: string;
   phone?: string | null;
   course?: string | null;
   bio?: string | null;
@@ -46,7 +42,6 @@ export interface StudentAuthResponse {
   studentStatus: "Active" | "Inactive";
   createdDate: string;
   shopifyCustomerId?: string | null;
-  shop: string;
   token: string;
   phone?: string | null;
   course?: string | null;

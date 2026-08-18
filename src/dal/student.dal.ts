@@ -18,7 +18,6 @@ export async function insertStudent(student: Student): Promise<Student> {
     student.studentStatus,
     student.createdDate,
     student.shopifyCustomerId || null,
-    student.shop,
     student.phone || null,
     student.course || null,
     student.bio || null,
@@ -26,19 +25,19 @@ export async function insertStudent(student: Student): Promise<Student> {
   return student;
 }
 
-export async function selectStudentByEmail(email: string, shop: string): Promise<Student | null> {
-  const query = 'SELECT * FROM students WHERE email = ? AND shop = ?';
-  return dbGet<Student>(query, [email, shop]);
+export async function selectStudentByEmail(email: string): Promise<Student | null> {
+  const query = 'SELECT * FROM students WHERE email = ?';
+  return dbGet<Student>(query, [email]);
 }
 
-export async function selectAllStudents(shop: string): Promise<Student[]> {
+export async function selectAllStudents(): Promise<Student[]> {
   const query = 'SELECT * FROM students WHERE shop = ?';
-  return dbAll<Student>(query, [shop]);
+  return dbAll<Student>(query);
 }
 
-export async function selectStudentById(id: string, shop: string): Promise<Student | null> {
+export async function selectStudentById(id: string): Promise<Student | null> {
   const query = 'SELECT * FROM students WHERE id = ? AND shop = ?';
-  return dbGet<Student>(query, [id, shop]);
+  return dbGet<Student>(query, [id]);
 }
 
 export async function selectStudentByIdSimple(id: string): Promise<Student | null> {
@@ -64,13 +63,12 @@ export async function updateStudentInDb(
     updatedFields.course || null,
     updatedFields.bio || null,
     id,
-    updatedFields.shop,
   ]);
-  return selectStudentById(id, updatedFields.shop);
+  return selectStudentById(id);
 }
 
-export async function deleteStudentFromDb(id: string, shop: string): Promise<boolean> {
-  const query = 'DELETE FROM students WHERE id = ? AND shop = ?';
-  const result = await dbRun(query, [id, shop]);
+export async function deleteStudentFromDb(id: string): Promise<boolean> {
+  const query = 'DELETE FROM students WHERE id = ?';
+  const result = await dbRun(query, [id]);
   return result.changes > 0;
 }

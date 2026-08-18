@@ -19,8 +19,7 @@ import { findCustomerByEmail, normalizeShop } from '../service/shopify.service.j
 
 
 export async function register(req: Request, res: Response): Promise<void> {
-  const rawShop = req.body.shop || (req.query.shop as string) || 'devstore-k71vvnrv.myshopify.com';
-  const shop = normalizeShop(rawShop);
+
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!req.body.email || !emailRegex.test(req.body.email.trim())) {
@@ -47,7 +46,7 @@ export async function register(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    const student = await registerStudent({ ...req.body, shop });
+    const student = await registerStudent({ ...req.body });
     res.status(201).json({ message: 'Student registered successfully', student });
   } catch (error) {
     res.status(400).json({ error: 'Registration failed', details: (error as Error).message });
@@ -55,11 +54,10 @@ export async function register(req: Request, res: Response): Promise<void> {
 }
 
 export async function login(req: Request, res: Response): Promise<void> {
-  const rawShop = req.body.shop || (req.query.shop as string) || 'devstore-k71vvnrv.myshopify.com';
-  const shop = normalizeShop(rawShop);
+
 
   try {
-    const student = await loginStudent({ ...req.body, shop });
+    const student = await loginStudent({ ...req.body });
     res.status(200).json({ message: 'Login successful', student });
   } catch (error) {
     res.status(401).json({ error: 'Login failed', details: (error as Error).message });
@@ -67,14 +65,10 @@ export async function login(req: Request, res: Response): Promise<void> {
 }
 
 export async function getAllStudents(req: Request, res: Response): Promise<void> {
-  const shop = req.shop;
-  if (!shop) {
-    res.status(400).json({ error: 'Shop domain missing from request context' });
-    return;
-  }
+
 
   try {
-    const students = await fetchAllStudents(shop);
+    const students = await fetchAllStudents();
     res.status(200).json(students);
   } catch (error) {
     res.status(400).json({ error: 'Failed to fetch students', details: (error as Error).message });
@@ -87,7 +81,7 @@ export async function getStudentById(req: Request, res: Response): Promise<void>
   const shop = normalizeShop(rawShop);
 
   try {
-    const student = await fetchStudentById(id, shop);
+    const student = await fetchStudentById(id);
     if (!student) {
       res.status(404).json({ error: 'Student not found' });
       return;
@@ -96,7 +90,7 @@ export async function getStudentById(req: Request, res: Response): Promise<void>
     // Enrich student response with Shopify customer details if available
     let shopifyCustomerDetails = null;
     try {
-      shopifyCustomerDetails = await findCustomerByEmail(shop, student.email);
+      shopifyCustomerDetails = await findCustomerByEmail( student.email);
     } catch (e) {
       console.warn(`Could not fetch Shopify customer details for student ${id}: ${(e as Error).message}`);
     }
@@ -140,7 +134,7 @@ export async function removeStudent(req: Request, res: Response): Promise<void> 
 
   try {
     const id = req.params.id as string;
-    const success = await deleteStudent(id, shop);
+    const success = await deleteStudent(id);
     if (!success) {
       res.status(404).json({ error: 'Student not found' });
       return;
