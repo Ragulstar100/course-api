@@ -3,54 +3,30 @@ import type { IMerchantController, IMerchantRepository, IMerchantService } from 
 import type { MerchantStore } from '../models/merchant.model.js';
 import { shopifyConfig } from '../../config.js';
 import { signJwt } from '../middleware/auth.middleware.js';
-import { MerchantService } from '../service/merchant.service.js';
 import { MerchantRepository } from '../dal/merchant.dal.js';
 import { ShopifyService } from '../service/shopify.service.js';
 
 
-const service:IMerchantService=new MerchantService()
 const repositery:IMerchantRepository=new MerchantRepository()
 
 const shopyfyService:ShopifyService=new ShopifyService()
 
 
 export class MerchantController implements IMerchantController {
-  async register(req: Request, res: Response): Promise<void> {
-    const { shop, username, password, name, email } = req.body;
 
-    if (!shop || !username || !password) {
-      res.status(400).json({ error: 'Missing required fields: shop, username, password' });
-      return;
-    }
-
-    try {
-      const result = await service.registerMerchant({ shop, username, password, name, email });
-      res.status(201).json({ message: 'Merchant registered successfully', merchant: result });
-    } catch (error) {
-      res.status(400).json({ error: 'Registration failed', details: (error as Error).message });
-    }
-  }
-
-  async login(req: Request, res: Response): Promise<void> {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-      res.status(400).json({ error: 'Missing username or password' });
-      return;
-    }
-
-    try {
-      const result = await service.loginMerchant({ username, password });
-      res.status(200).json({ message: 'Login successful', merchant: result });
-    } catch (error) {
-      res.status(401).json({ error: 'Login failed', details: (error as Error).message });
-    }
-  }
 
   async autoLogin(req: Request, res: Response): Promise<void> {
     const shop = req.query.shop as string;
     if (!shop) {
       res.status(400).json({ error: 'Missing shop parameter' });
+      return;
+    }
+
+    let isShopAvaiable= await shopyfyService.verifyShopifyStore(shop)
+
+  
+    if (!isShopAvaiable) {
+      res.status(401).json({ error: 'Shop not avaiable'});
       return;
     }
 

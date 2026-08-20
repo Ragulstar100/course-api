@@ -1,9 +1,10 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import crypto from 'crypto';
 import { shopifyConfig } from '../../config.js';
-import { normalizeShop } from '../service/shopify.service.js';
+import { normalizeShop, ShopifyService } from '../service/shopify.service.js';
 import { StudentRepository } from '../dal/student.dal.js';
 import type { IStudentRepository } from '../models/student.model.js';
+
 
 // Extend express Request interface
 declare global {
@@ -17,6 +18,7 @@ declare global {
 }
 
 const studentRep:IStudentRepository=new StudentRepository()
+
 
 // ==========================================
 // CUSTOM JWT UTILITIES (Zero-dependency)
@@ -112,6 +114,8 @@ export async function shopifyAuthMiddleware(req: Request, res: Response, next: N
   // Case 1: Simple shop header provided (e.g. for development or basic queries)
   if (!token && shopHeader) {
     req.shop = normalizeShop(shopHeader);
+  
+
     return next();
   }
 
@@ -146,6 +150,7 @@ export async function shopifyAuthMiddleware(req: Request, res: Response, next: N
   res.status(401).json({ error: 'Authentication failed. Invalid session token.' });
 }
 
+
 /**
  * Middleware for Student Portal Endpoints
  * Verifies the Student JWT token.
@@ -176,3 +181,4 @@ export async function studentAuthMiddleware(req: Request, res: Response, next: N
   req.studentId = decoded.studentId;
   next();
 }
+

@@ -31,8 +31,6 @@ export type MerchantAuthResponse = {
 };
 
 export interface IMerchantController {
-  register(req: Request, res: Response): Promise<void>;
-  login(req: Request, res: Response): Promise<void>;
   autoLogin(req: Request, res: Response): Promise<void>;
   getProfile(req: Request, res: Response): Promise<void>;
   getShopDetails(req: Request, res: Response): Promise<void>;

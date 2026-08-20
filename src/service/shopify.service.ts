@@ -259,6 +259,19 @@ export class ShopifyService implements IShopifyService {
     return response?.data?.customerCreate?.customer || null;
   }
 
+//shop name shoulbe contains domain.myshopify.com
+async verifyShopifyStore(shop: string): Promise<boolean> {
+  const cleanShop = shop.trim().toLowerCase();
+  const shopDomain = cleanShop.includes('.') ? cleanShop : `${cleanShop}.myshopify.com`;
+  
+  try {
+    const response = await axios.get(`https://${shopDomain}/robots.txt`, { timeout: 5000 });
+    return response.status === 200;
+  } catch (error) {
+    return false;
+  }
+}
+
   async createProductInShopify(shop: string, title: string, description: string): Promise<any> {
     const query = `
       mutation CreateProduct($input: ProductInput!) {

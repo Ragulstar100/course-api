@@ -4,6 +4,7 @@
   fetchShopInfo(shop: string): Promise<any>
   fetchProducts(shop: string, limit: number): Promise<any[]>
   fetchCustomers(shop: string, limit: number): Promise<any[]>
+  verifyShopifyStore(shop: string): Promise<boolean>
   findCustomerByEmail(email: string): Promise<any | null>
   fetchProductDetails(shop: string, productId: string): Promise<any | null>
   createCustomerInShopify(email: string, name: string): Promise<any>
