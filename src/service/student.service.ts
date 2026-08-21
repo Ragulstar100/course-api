@@ -37,7 +37,7 @@ export class StudentService implements IStudentService {
       try {
         let shopifyCustomer = await shopyfyService.findCustomerByEmail(data.email);
         if (!shopifyCustomer) {
-          shopifyCustomer = await shopifyCustomer.createCustomerInShopify(data.email, data.studentName);
+          shopifyCustomer = await shopyfyService.createCustomerInShopify(data.email, data.studentName);
         }
         if (shopifyCustomer) {
           shopifyCustomerId = shopifyCustomer.id;

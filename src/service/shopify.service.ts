@@ -42,8 +42,8 @@ export class ShopifyService implements IShopifyService {
     return null;
   }
 
-  async makeGraphQLRequest(query: string, variables: any = {}): Promise<any> {
-    let normalizedShop = 'devstore-k71vvnrv.myshopify.com';
+  async makeGraphQLRequest(shop: string | null | undefined, query: string, variables: any = {}): Promise<any> {
+    const normalizedShop = shop ? normalizeShop(shop) : normalizeShop(shopifyConfig.shopifyStoreDomain || 'devstore-k71vvnrv.myshopify.com');
     const token = await this.getAccessTokenForShop(normalizedShop);
 
     if (!token) {
@@ -82,7 +82,7 @@ export class ShopifyService implements IShopifyService {
         }
       }
     `;
-    const res = await this.makeGraphQLRequest(query);
+    const res = await this.makeGraphQLRequest(shop, query);
     return res?.data?.shop || null;
   }
 
@@ -117,7 +117,7 @@ export class ShopifyService implements IShopifyService {
         }
       }
     `;
-    const res = await this.makeGraphQLRequest(query, { first: limit });
+    const res = await this.makeGraphQLRequest(shop, query, { first: limit });
     const edges = res?.data?.products?.edges || [];
     return edges.map((edge: any) => {
       const node = edge.node;
@@ -148,12 +148,12 @@ export class ShopifyService implements IShopifyService {
         }
       }
     `;
-    const res = await this.makeGraphQLRequest(query, { first: limit });
+    const res = await this.makeGraphQLRequest(shop, query, { first: limit });
     const edges = res?.data?.customers?.edges || [];
     return edges.map((edge: any) => edge.node);
   }
 
-  async findCustomerByEmail(email: string): Promise<any | null> {
+  async findCustomerByEmail(email: string, shop?: string): Promise<any | null> {
     const query = `
       query FindCustomer($query: String!) {
         customers(first: 1, query: $query) {
@@ -166,7 +166,7 @@ export class ShopifyService implements IShopifyService {
         }
       }
     `;
-    const res = await this.makeGraphQLRequest(query, { query: `email:${email}` });
+    const res = await this.makeGraphQLRequest(shop, query, { query: `email:${email}` });
     const edges = res?.data?.customers?.edges || [];
     return edges.length > 0 ? edges[0].node : null;
   }
@@ -201,7 +201,7 @@ export class ShopifyService implements IShopifyService {
         }
       }
     `;
-    const res = await this.makeGraphQLRequest(query, { id: gid });
+    const res = await this.makeGraphQLRequest(shop, query, { id: gid });
     const node = res?.data?.product;
     if (!node) return null;
 
@@ -218,7 +218,7 @@ export class ShopifyService implements IShopifyService {
     };
   }
 
-  async createCustomerInShopify(email: string, name: string): Promise<any> {
+  async createCustomerInShopify(email: string, name: string, shop?: string): Promise<any> {
     const query = `
       mutation CreateCustomer($input: CustomerInput!) {
         customerCreate(input: $input) {
@@ -250,7 +250,7 @@ export class ShopifyService implements IShopifyService {
       }
     };
 
-    const response = await this.makeGraphQLRequest(query, variables);
+    const response = await this.makeGraphQLRequest(shop, query, variables);
     
     if (response?.data?.customerCreate?.userErrors?.length > 0) {
       throw new Error(`Shopify customerCreate errors: ${JSON.stringify(response.data.customerCreate.userErrors)}`);
@@ -296,7 +296,7 @@ async verifyShopifyStore(shop: string): Promise<boolean> {
       }
     };
 
-    const response = await this.makeGraphQLRequest(query, variables);
+    const response = await this.makeGraphQLRequest(shop, query, variables);
 
     if (response?.data?.productCreate?.userErrors?.length > 0) {
       throw new Error(`Shopify productCreate errors: ${JSON.stringify(response.data.productCreate.userErrors)}`);

@@ -19,6 +19,7 @@ export const shopifyConfig = {
   host: process.env.HOST || 'http://localhost:1000',
   jwtSecret: process.env.JWT_SECRET || 'super_secret_course_academy_jwt_key',
   accessToken: process.env.SHOPIFY_ACCESS_TOKEN || '',
+  shopifyStoreDomain: process.env.SHOPIFY_STORE_DOMAIN || 'devstore-k71vvnrv.myshopify.com',
 };
 
 //depende
